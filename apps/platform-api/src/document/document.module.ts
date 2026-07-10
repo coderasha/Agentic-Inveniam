@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Request, Response } from 'express';
 import { AuthorizationService, CurrentPrincipal, type Principal } from '../common/auth';
 import { ConflictError, NotFoundError, ValidationError } from '../common/errors';
-import { OutboxService, PrismaService } from '../infrastructure/services';
+import { PrismaService } from '../infrastructure/services';
 
 export function buildStorageKey(orgId: string, documentId: string, version: number, checksum: string): string {
   if (!/^[0-9a-f-]{36}$/i.test(orgId) || !/^[0-9a-f-]{36}$/i.test(documentId)) {
@@ -74,7 +74,6 @@ export class DocumentService {
   constructor(
     private readonly db: PrismaService,
     private readonly storage: LocalDocumentStorage,
-    private readonly outbox: OutboxService,
   ) {}
   async create(input: Record<string, unknown>, p: Principal) {
     if (typeof input.title !== 'string' || !input.title.trim()) throw new ValidationError('title is required');
@@ -153,23 +152,35 @@ export class DocumentService {
     if (typeof supplied === 'string' && supplied !== actual) throw new ValidationError('x-checksum-sha256 mismatch');
     if (actual !== versionRow.checksumSha256) throw new ValidationError('Content checksum does not match metadata');
     await this.storage.putObject(versionRow.storageKey, body);
-    const updated = await this.db.document.update({ where: { id }, data: {
-      fileName: versionRow.fileName, mimeType: versionRow.mimeType, byteSize: versionRow.byteSize,
-      checksumSha256: actual, storageKey: versionRow.storageKey, currentVersion: version,
-      status: 'ready', scanStatus: 'skipped', version: { increment: 1 },
-    } });
-    await this.outbox.enqueue({
+    const event = {
       eventId: uuidv4(), eventType: 'DOCUMENT_UPLOADED', aggregateType: 'Document',
       aggregateId: id, occurredAt: new Date().toISOString(), correlationId: p.correlationId,
       actorUserId: p.userId, organizationId: p.organizationId ?? null,
       payload: { version, byteSize: body.length, checksumSha256: actual },
       metadata: { service: 'platform-api' },
-    }, 'gain.document.uploaded');
+    };
+    const updated = await this.db.$transaction(async (tx) => {
+      await tx.document.update({ where: { id }, data: { status: 'uploaded' } });
+      const row = await tx.document.update({ where: { id }, data: {
+        fileName: versionRow.fileName, mimeType: versionRow.mimeType, byteSize: versionRow.byteSize,
+        checksumSha256: actual, storageKey: versionRow.storageKey, currentVersion: version,
+        status: 'ready', scanStatus: 'skipped', version: { increment: 1 },
+      } });
+      await tx.outboxMessage.create({ data: {
+        topic: 'gain.document.uploaded', aggregateType: event.aggregateType,
+        aggregateId: id, eventType: event.eventType, payload: json(event),
+        headers: json({ correlationId: p.correlationId }),
+      } });
+      return row;
+    });
     return serialize(updated);
   }
   async createVersion(id: string, input: Record<string, unknown>, p: Principal) {
-    const document = await this.get(id, p);
-    const versionNumber = document.currentVersion + 1;
+    await this.get(id, p);
+    const latest = await this.db.documentVersion.aggregate({
+      where: { documentId: id }, _max: { versionNumber: true },
+    });
+    const versionNumber = (latest._max.versionNumber ?? 0) + 1;
     const hash = checksum(input.checksumSha256);
     const size = positiveInt(input.byteSize, 'byteSize');
     if (typeof input.fileName !== 'string' || typeof input.mimeType !== 'string') {

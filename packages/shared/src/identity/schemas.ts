@@ -45,6 +45,18 @@ export const PERMISSIONS = [
   'document:version:manage',
   'document:link:manage',
   'document:audit:read',
+  'asset:create',
+  'asset:read',
+  'asset:update',
+  'asset:delete',
+  'asset:valuate',
+  'workflow:create',
+  'workflow:read',
+  'workflow:update',
+  'workflow:delete',
+  'workflow:run',
+  'notification:create',
+  'notification:read',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
