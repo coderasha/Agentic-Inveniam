@@ -1,0 +1,35 @@
+# syntax=docker/dockerfile:1.7
+
+FROM node:22-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json .npmrc ./
+COPY packages/tsconfig/package.json packages/tsconfig/
+COPY packages/shared/package.json packages/shared/
+COPY packages/database/package.json packages/database/
+COPY apps/identity-api/package.json apps/identity-api/
+RUN pnpm install --frozen-lockfile || pnpm install
+
+FROM deps AS build
+COPY packages packages
+COPY apps/identity-api apps/identity-api
+RUN pnpm --filter @gain/shared build \
+ && pnpm --filter @gain/database build \
+ && pnpm --filter @gain/identity-api build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup -S gain && adduser -S gain -G gain
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
+COPY --from=build /app/apps/identity-api/dist ./apps/identity-api/dist
+COPY --from=build /app/apps/identity-api/package.json ./apps/identity-api/package.json
+COPY --from=build /app/package.json ./package.json
+USER gain
+EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3001/api/health/live || exit 1
+CMD ["node", "apps/identity-api/dist/main.js"]
