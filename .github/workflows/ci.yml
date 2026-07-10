@@ -49,4 +49,6 @@ jobs:
       - run: pnpm --filter @gain/identity-api typecheck
       - run: pnpm --filter @gain/twin-api test
       - run: pnpm --filter @gain/twin-api typecheck
+      - run: pnpm --filter @gain/platform-api test
+      - run: pnpm --filter @gain/platform-api typecheck
       - run: pnpm --filter @gain/web typecheck

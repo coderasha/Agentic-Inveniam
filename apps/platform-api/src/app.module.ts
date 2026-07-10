@@ -12,11 +12,18 @@ import {
 import { GlobalExceptionFilter, HealthController } from './common/http';
 import appConfig, { validateEnv } from './config';
 import { DocumentModule } from './document/document.module';
+import { GraphModule } from './graph/graph.module';
 import {
   CompositeTokenVerifier, KafkaPublisher, KeycloakTokenVerifier,
   OutboxService, PrismaService, RedisService,
 } from './infrastructure/services';
 import { NotificationModule } from './notification/notification.module';
+import { ProvenanceModule } from './provenance/provenance.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
+import { TokenizationModule } from './tokenization/tokenization.module';
+import { TrustModule } from './trust/trust.module';
+import { ValuationModule } from './valuation/valuation.module';
 import { WorkflowModule } from './workflow/workflow.module';
 
 @Global()
@@ -54,7 +61,7 @@ class PlatformCoreModule {}
       limit: Number(process.env.RATE_LIMIT_LIMIT ?? 120),
     }]),
     ScheduleModule.forRoot(), TerminusModule, PlatformCoreModule,
-    DocumentModule, AssetModule, WorkflowModule, NotificationModule,
+    DocumentModule, AssetModule, WorkflowModule, NotificationModule, GraphModule, ProvenanceModule, TrustModule, ValuationModule, TokenizationModule, MarketplaceModule, PortfolioModule,
   ],
 })
 export class AppModule {}

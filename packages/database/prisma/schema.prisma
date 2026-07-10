@@ -881,3 +881,671 @@ model Notification {
   @@index([organizationId, createdAt])
   @@map("notifications")
 }
+
+// ─── Knowledge Graph ─────────────────────────────────────────────────────────
+
+enum GraphNodeKind {
+  twin
+  document
+  asset
+  organization
+  user
+  workflow
+  claim
+  external
+  custom
+}
+
+enum GraphEdgeSource {
+  manual
+  twin_relationship
+  document_link
+  asset_twin
+  inferred
+}
+
+model GraphNode {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  kind           GraphNodeKind
+  label          String        @db.VarChar(300)
+  externalId     String?       @map("external_id") @db.Uuid
+  properties     Json          @default("{}")
+  sourceSystem   String        @default("manual") @map("source_system") @db.VarChar(100)
+  version        Int           @default(1)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  edgesFrom GraphEdge[] @relation("GraphEdgeFrom")
+  edgesTo   GraphEdge[] @relation("GraphEdgeTo")
+
+  @@unique([organizationId, kind, externalId])
+  @@index([organizationId, kind])
+  @@index([organizationId, label])
+  @@index([deletedAt])
+  @@map("graph_nodes")
+}
+
+model GraphEdge {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  fromNodeId       String          @map("from_node_id") @db.Uuid
+  toNodeId         String          @map("to_node_id") @db.Uuid
+  relationshipType String          @map("relationship_type") @db.VarChar(100)
+  label            String?         @db.VarChar(200)
+  weight           Float?
+  properties       Json            @default("{}")
+  source           GraphEdgeSource @default(manual)
+  sourceRef        String?         @map("source_ref") @db.VarChar(200)
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?       @map("deleted_at") @db.Timestamptz(3)
+
+  fromNode GraphNode @relation("GraphEdgeFrom", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode   GraphNode @relation("GraphEdgeTo", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, fromNodeId, toNodeId, relationshipType, source])
+  @@index([organizationId, relationshipType])
+  @@index([fromNodeId])
+  @@index([toNodeId])
+  @@index([sourceRef])
+  @@index([deletedAt])
+  @@map("graph_edges")
+}
+
+model GraphSyncRun {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  status         String   @db.VarChar(40)
+  nodesUpserted  Int      @default(0) @map("nodes_upserted")
+  edgesUpserted  Int      @default(0) @map("edges_upserted")
+  details        Json     @default("{}")
+  startedAt      DateTime @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+
+  @@index([organizationId, startedAt])
+  @@map("graph_sync_runs")
+}
+
+// ─── Data Provenance ─────────────────────────────────────────────────────────
+
+enum ProvenanceSubjectType {
+  twin
+  twin_attribute
+  document
+  document_version
+  asset
+  asset_valuation
+  graph_node
+  graph_edge
+  claim
+  custom
+}
+
+enum ProvenanceSourceType {
+  upload
+  api
+  sensor
+  inference
+  manual
+  sync
+  external
+}
+
+enum ProvenanceStatus {
+  recorded
+  verified
+  disputed
+  revoked
+}
+
+enum ProvenanceLinkRelation {
+  derived_from
+  supersedes
+  corroborates
+  contradicts
+  extracted_from
+  attests
+}
+
+model ProvenanceRecord {
+  id               String                @id @default(uuid()) @db.Uuid
+  organizationId   String                @map("organization_id") @db.Uuid
+  subjectType      ProvenanceSubjectType @map("subject_type")
+  subjectId        String                @map("subject_id") @db.Uuid
+  sourceType       ProvenanceSourceType  @default(manual) @map("source_type")
+  sourceRef        String?               @map("source_ref") @db.VarChar(500)
+  contentHash      String                @map("content_hash") @db.Char(64)
+  chainHash        String                @map("chain_hash") @db.Char(64)
+  previousRecordId String?               @map("previous_record_id") @db.Uuid
+  previousHash     String?               @map("previous_hash") @db.Char(64)
+  confidence       Float?
+  status           ProvenanceStatus      @default(recorded)
+  summary          String?               @db.VarChar(1000)
+  metadata         Json                  @default("{}")
+  capturedAt       DateTime              @default(now()) @map("captured_at") @db.Timestamptz(3)
+  verifiedAt       DateTime?             @map("verified_at") @db.Timestamptz(3)
+  verifiedByUserId String?               @map("verified_by_user_id") @db.Uuid
+  revokedAt        DateTime?             @map("revoked_at") @db.Timestamptz(3)
+  createdByUserId  String?               @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  previous ProvenanceRecord?  @relation("ProvenanceChain", fields: [previousRecordId], references: [id])
+  next     ProvenanceRecord[] @relation("ProvenanceChain")
+  linksFrom ProvenanceLink[]  @relation("ProvenanceLinkFrom")
+  linksTo   ProvenanceLink[]  @relation("ProvenanceLinkTo")
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([organizationId, status, capturedAt])
+  @@index([contentHash])
+  @@index([chainHash])
+  @@index([previousRecordId])
+  @@map("provenance_records")
+}
+
+model ProvenanceLink {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  fromRecordId   String                 @map("from_record_id") @db.Uuid
+  toRecordId     String                 @map("to_record_id") @db.Uuid
+  relation       ProvenanceLinkRelation
+  note           String?                @db.VarChar(1000)
+  createdByUserId String?               @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt      DateTime?              @map("deleted_at") @db.Timestamptz(3)
+
+  fromRecord ProvenanceRecord @relation("ProvenanceLinkFrom", fields: [fromRecordId], references: [id], onDelete: Cascade)
+  toRecord   ProvenanceRecord @relation("ProvenanceLinkTo", fields: [toRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([fromRecordId, toRecordId, relation])
+  @@index([organizationId, relation])
+  @@map("provenance_links")
+}
+
+// ─── Trust Engine ────────────────────────────────────────────────────────────
+
+enum TrustSubjectType {
+  twin
+  document
+  asset
+  graph_node
+  provenance_record
+  organization
+  claim
+  custom
+}
+
+enum AttestationKind {
+  identity
+  data_quality
+  valuation
+  legal
+  compliance
+  technical
+  custom
+}
+
+enum AttestationStatus {
+  active
+  expired
+  revoked
+  disputed
+}
+
+enum TrustAnchorStatus {
+  pending
+  anchored
+  failed
+}
+
+model TrustAttestation {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  subjectType        TrustSubjectType  @map("subject_type")
+  subjectId          String            @map("subject_id") @db.Uuid
+  kind               AttestationKind   @default(data_quality)
+  status             AttestationStatus @default(active)
+  statement          String            @db.VarChar(2000)
+  evidenceHash       String?           @map("evidence_hash") @db.Char(64)
+  provenanceRecordId String?           @map("provenance_record_id") @db.Uuid
+  confidence         Float             @default(0.7)
+  weight             Float             @default(1)
+  expiresAt          DateTime?         @map("expires_at") @db.Timestamptz(3)
+  revokedAt          DateTime?         @map("revoked_at") @db.Timestamptz(3)
+  metadata           Json              @default("{}")
+  createdByUserId    String?           @map("created_by_user_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([organizationId, status, kind])
+  @@index([provenanceRecordId])
+  @@map("trust_attestations")
+}
+
+model TrustScore {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  subjectType    TrustSubjectType @map("subject_type")
+  subjectId      String           @map("subject_id") @db.Uuid
+  score          Float
+  grade          String           @db.VarChar(2)
+  components     Json             @default("{}")
+  attestationCount Int            @default(0) @map("attestation_count")
+  provenanceCount  Int            @default(0) @map("provenance_count")
+  computedAt     DateTime         @default(now()) @map("computed_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([organizationId, subjectType, subjectId])
+  @@index([organizationId, score])
+  @@map("trust_scores")
+}
+
+model TrustAnchor {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  subjectType    TrustSubjectType  @map("subject_type")
+  subjectId      String            @map("subject_id") @db.Uuid
+  payloadHash    String            @map("payload_hash") @db.Char(64)
+  network        String            @default("offchain") @db.VarChar(64)
+  status         TrustAnchorStatus @default(pending)
+  anchorRef      String?           @map("anchor_ref") @db.VarChar(500)
+  anchoredAt     DateTime?         @map("anchored_at") @db.Timestamptz(3)
+  metadata       Json              @default("{}")
+  createdByUserId String?          @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([organizationId, subjectType, subjectId])
+  @@index([payloadHash])
+  @@index([status, network])
+  @@map("trust_anchors")
+}
+
+// ─── Continuous Valuation ────────────────────────────────────────────────────
+
+enum ValuationMethodology {
+  income
+  market_comps
+  cost
+  nav
+  dcf
+  hybrid
+  manual
+  external
+}
+
+enum ValuationModelStatus {
+  draft
+  active
+  archived
+}
+
+enum ValuationRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum ValuationSubjectType {
+  asset
+  twin
+  portfolio
+  custom
+}
+
+model ValuationModel {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  name           String                @db.VarChar(200)
+  slug           String                @db.VarChar(120)
+  description    String?               @db.VarChar(2000)
+  methodology    ValuationMethodology
+  status         ValuationModelStatus  @default(draft)
+  parameters     Json                  @default("{}")
+  version        Int                   @default(1)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  runs ValuationRun[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("valuation_models")
+}
+
+model ValuationRun {
+  id               String               @id @default(uuid()) @db.Uuid
+  organizationId   String               @map("organization_id") @db.Uuid
+  modelId          String               @map("model_id") @db.Uuid
+  subjectType      ValuationSubjectType @map("subject_type")
+  subjectId        String               @map("subject_id") @db.Uuid
+  status           ValuationRunStatus   @default(queued)
+  asOfDate         DateTime             @map("as_of_date") @db.Date
+  currencyCode     String               @default("USD") @map("currency_code") @db.Char(3)
+  inputs           Json                 @default("{}")
+  outputs          Json?
+  amountMinor      BigInt?              @map("amount_minor")
+  confidence       Float?
+  errorMessage     String?              @map("error_message") @db.VarChar(2000)
+  startedAt        DateTime?            @map("started_at") @db.Timestamptz(3)
+  completedAt      DateTime?            @map("completed_at") @db.Timestamptz(3)
+  createdByUserId  String?              @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  model ValuationModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, subjectType, subjectId])
+  @@index([modelId, createdAt])
+  @@map("valuation_runs")
+}
+
+// ─── Tokenization ────────────────────────────────────────────────────────────
+
+enum TokenNetwork {
+  offchain
+  polygon_amoy
+  fabric_dev
+}
+
+enum TokenInstrumentStatus {
+  draft
+  active
+  frozen
+  retired
+}
+
+enum TokenSubjectType {
+  asset
+  twin
+  portfolio
+  custom
+}
+
+enum TokenLedgerEntryType {
+  mint
+  burn
+  transfer
+  allocate
+  freeze
+  unfreeze
+}
+
+enum TokenSettlementStatus {
+  settled
+  pending
+  failed
+}
+
+model TokenInstrument {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  name           String                @db.VarChar(200)
+  symbol         String                @db.VarChar(12)
+  subjectType    TokenSubjectType      @map("subject_type")
+  subjectId      String                @map("subject_id") @db.Uuid
+  network        TokenNetwork          @default(offchain)
+  status         TokenInstrumentStatus @default(draft)
+  decimals       Int                   @default(0)
+  totalSupply    BigInt                @default(0) @map("total_supply")
+  totalSupplyCap BigInt?               @map("total_supply_cap")
+  contractRef    String?               @map("contract_ref") @db.VarChar(200)
+  metadata       Json                  @default("{}")
+  version        Int                   @default(1)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  holdings TokenHolding[]
+  ledger   TokenLedgerEntry[]
+
+  @@unique([organizationId, symbol])
+  @@index([organizationId, status])
+  @@index([organizationId, subjectType, subjectId])
+  @@map("token_instruments")
+}
+
+model TokenHolding {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  instrumentId   String   @map("instrument_id") @db.Uuid
+  holderRef      String   @map("holder_ref") @db.VarChar(200)
+  balance        BigInt   @default(0)
+  frozen         Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  instrument TokenInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, holderRef])
+  @@index([organizationId, holderRef])
+  @@map("token_holdings")
+}
+
+model TokenLedgerEntry {
+  id               String                @id @default(uuid()) @db.Uuid
+  organizationId   String                @map("organization_id") @db.Uuid
+  instrumentId     String                @map("instrument_id") @db.Uuid
+  entryType        TokenLedgerEntryType  @map("entry_type")
+  fromHolderRef    String?               @map("from_holder_ref") @db.VarChar(200)
+  toHolderRef      String?               @map("to_holder_ref") @db.VarChar(200)
+  amount           BigInt
+  txHash           String                @map("tx_hash") @db.Char(64)
+  previousTxHash   String?               @map("previous_tx_hash") @db.Char(64)
+  settlementStatus TokenSettlementStatus @default(settled) @map("settlement_status")
+  settlementRef    String?               @map("settlement_ref") @db.VarChar(500)
+  memo             String?               @db.VarChar(500)
+  metadata         Json                  @default("{}")
+  createdByUserId  String?               @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  instrument TokenInstrument @relation(fields: [instrumentId], references: [id], onDelete: Cascade)
+
+  @@unique([instrumentId, txHash])
+  @@index([organizationId, instrumentId, createdAt])
+  @@index([entryType])
+  @@map("token_ledger_entries")
+}
+
+// ─── Marketplace ─────────────────────────────────────────────────────────────
+
+enum MarketplaceSubjectType {
+  asset
+  token_instrument
+  twin
+  custom
+}
+
+enum MarketplaceListingStatus {
+  draft
+  open
+  partially_filled
+  filled
+  cancelled
+  expired
+}
+
+enum MarketplaceOrderStatus {
+  open
+  partially_filled
+  filled
+  cancelled
+  rejected
+}
+
+enum MarketplaceOrderType {
+  limit
+  market
+}
+
+enum MarketplaceTradeStatus {
+  settled
+  pending
+  failed
+}
+
+model MarketplaceListing {
+  id                String                   @id @default(uuid()) @db.Uuid
+  organizationId    String                   @map("organization_id") @db.Uuid
+  subjectType       MarketplaceSubjectType   @map("subject_type")
+  subjectId         String                   @map("subject_id") @db.Uuid
+  title             String                   @db.VarChar(300)
+  description       String?                  @db.VarChar(4000)
+  sellerRef         String                   @map("seller_ref") @db.VarChar(200)
+  currencyCode      String                   @default("USD") @map("currency_code") @db.Char(3)
+  priceMinor        BigInt                   @map("price_minor")
+  quantity          BigInt
+  quantityRemaining BigInt                   @map("quantity_remaining")
+  status            MarketplaceListingStatus @default(open)
+  expiresAt         DateTime?                @map("expires_at") @db.Timestamptz(3)
+  metadata          Json                     @default("{}")
+  version           Int                      @default(1)
+  createdByUserId   String?                  @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime?                @map("deleted_at") @db.Timestamptz(3)
+
+  orders MarketplaceOrder[]
+  trades MarketplaceTrade[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, subjectType, subjectId])
+  @@index([expiresAt])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceOrder {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  listingId       String                 @map("listing_id") @db.Uuid
+  buyerRef        String                 @map("buyer_ref") @db.VarChar(200)
+  orderType       MarketplaceOrderType   @default(limit) @map("order_type")
+  priceMinor      BigInt?                @map("price_minor")
+  quantity        BigInt
+  filledQuantity  BigInt                 @default(0) @map("filled_quantity")
+  status          MarketplaceOrderStatus @default(open)
+  metadata        Json                   @default("{}")
+  createdByUserId String?                @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  listing MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  trades  MarketplaceTrade[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([listingId, status])
+  @@map("marketplace_orders")
+}
+
+model MarketplaceTrade {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  listingId      String                 @map("listing_id") @db.Uuid
+  orderId        String                 @map("order_id") @db.Uuid
+  sellerRef      String                 @map("seller_ref") @db.VarChar(200)
+  buyerRef       String                 @map("buyer_ref") @db.VarChar(200)
+  priceMinor     BigInt                 @map("price_minor")
+  quantity       BigInt
+  notionalMinor  BigInt                 @map("notional_minor")
+  currencyCode   String                 @map("currency_code") @db.Char(3)
+  status         MarketplaceTradeStatus @default(settled)
+  settlementRef  String?                @map("settlement_ref") @db.VarChar(200)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  listing MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  order   MarketplaceOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([listingId, createdAt])
+  @@index([orderId])
+  @@map("marketplace_trades")
+}
+
+// ─── Portfolio OS ────────────────────────────────────────────────────────────
+
+enum PortfolioStatus {
+  draft
+  active
+  archived
+}
+
+enum PortfolioPositionSubjectType {
+  asset
+  twin
+  token_instrument
+  custom
+}
+
+model Portfolio {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  name           String          @db.VarChar(200)
+  slug           String          @db.VarChar(120)
+  description    String?         @db.VarChar(2000)
+  status         PortfolioStatus @default(active)
+  baseCurrency   String          @default("USD") @map("base_currency") @db.Char(3)
+  metadata       Json            @default("{}")
+  version        Int             @default(1)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz(3)
+
+  positions PortfolioPosition[]
+  snapshots PortfolioSnapshot[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("portfolios")
+}
+
+model PortfolioPosition {
+  id               String                       @id @default(uuid()) @db.Uuid
+  organizationId   String                       @map("organization_id") @db.Uuid
+  portfolioId      String                       @map("portfolio_id") @db.Uuid
+  subjectType      PortfolioPositionSubjectType @map("subject_type")
+  subjectId        String                       @map("subject_id") @db.Uuid
+  label            String                       @db.VarChar(300)
+  quantity         Decimal                      @db.Decimal(24, 8)
+  costBasisMinor   BigInt                       @default(0) @map("cost_basis_minor")
+  marketValueMinor BigInt                       @default(0) @map("market_value_minor")
+  weightHint       Float?                       @map("weight_hint")
+  metadata         Json                         @default("{}")
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?                    @map("deleted_at") @db.Timestamptz(3)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, subjectType, subjectId])
+  @@index([organizationId, portfolioId])
+  @@map("portfolio_positions")
+}
+
+model PortfolioSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  portfolioId      String   @map("portfolio_id") @db.Uuid
+  asOfDate         DateTime @map("as_of_date") @db.Date
+  baseCurrency     String   @map("base_currency") @db.Char(3)
+  navMinor         BigInt   @map("nav_minor")
+  costBasisMinor   BigInt   @map("cost_basis_minor")
+  unrealizedPnlMinor BigInt @map("unrealized_pnl_minor")
+  positionCount    Int      @map("position_count")
+  breakdown        Json     @default("{}")
+  createdByUserId  String?  @map("created_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, asOfDate])
+  @@index([organizationId, asOfDate])
+  @@map("portfolio_snapshots")
+}

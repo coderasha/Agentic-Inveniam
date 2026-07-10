@@ -13,6 +13,17 @@ import {
   Mail,
   LogOut,
   Network,
+  FileText,
+  Landmark,
+  GitBranch,
+  Bell,
+  Share2,
+  Fingerprint,
+  BadgeCheck,
+  Calculator,
+  Coins,
+  Store,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,7 +44,23 @@ const nav = [
     section: 'Digital Twins',
     items: [
       { href: '/twins', label: 'Twins', icon: Boxes },
-      { href: '/twins/graph', label: 'Relationships', icon: Network },
+      { href: '/twins/graph', label: 'Twin links', icon: Network },
+    ],
+  },
+  {
+    section: 'Platform',
+    items: [
+      { href: '/documents', label: 'Documents', icon: FileText },
+      { href: '/assets', label: 'Assets', icon: Landmark },
+      { href: '/portfolios', label: 'Portfolios', icon: Briefcase },
+      { href: '/valuations', label: 'Valuations', icon: Calculator },
+      { href: '/tokenization', label: 'Tokenization', icon: Coins },
+      { href: '/marketplace', label: 'Marketplace', icon: Store },
+      { href: '/graph', label: 'Knowledge Graph', icon: Share2 },
+      { href: '/provenance', label: 'Provenance', icon: Fingerprint },
+      { href: '/trust', label: 'Trust', icon: BadgeCheck },
+      { href: '/workflows', label: 'Workflows', icon: GitBranch },
+      { href: '/notifications', label: 'Notifications', icon: Bell },
     ],
   },
 ];
