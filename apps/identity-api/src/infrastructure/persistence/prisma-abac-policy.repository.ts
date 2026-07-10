@@ -7,12 +7,12 @@ import { Prisma } from '@gain/database';
 import type {
   AbacPolicyListFilters,
   AbacPolicyRepository,
-} from '../../../domain/identity/ports/abac-policy.repository';
+} from '../../domain/identity/ports/abac-policy.repository';
 import {
   ConflictError,
   NotFoundError,
   OptimisticLockError,
-} from '../../../domain/identity/errors';
+} from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapAbacPolicy } from './mappers';
 

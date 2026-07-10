@@ -8,12 +8,12 @@ import { Prisma } from '@gain/database';
 import type {
   OrganizationListFilters,
   OrganizationRepository,
-} from '../../../domain/identity/ports/organization.repository';
+} from '../../domain/identity/ports/organization.repository';
 import {
   ConflictError,
   NotFoundError,
   OptimisticLockError,
-} from '../../../domain/identity/errors';
+} from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapOrganization } from './mappers';
 

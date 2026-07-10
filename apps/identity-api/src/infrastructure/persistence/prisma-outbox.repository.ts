@@ -4,7 +4,7 @@ import { Prisma } from '@gain/database';
 import type {
   OutboxMessage,
   OutboxRepository,
-} from '../../../domain/identity/ports/infrastructure.ports';
+} from '../../domain/identity/ports/infrastructure.ports';
 import { PrismaService } from './prisma.service';
 
 @Injectable()

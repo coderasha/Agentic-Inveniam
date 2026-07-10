@@ -4,7 +4,7 @@ import {
   buildPaginationMeta,
   createOrganizationSchema,
   createUserSchema,
-} from './identity/schemas.js';
+} from './schemas';
 
 describe('Identity schemas', () => {
   it('validates organization creation', () => {

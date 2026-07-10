@@ -5,7 +5,7 @@ import type {
   AuditListFilters,
   AuditRepository,
   CreateAuditEntryInput,
-} from '../../../domain/identity/ports/audit.repository';
+} from '../../domain/identity/ports/audit.repository';
 import { PrismaService } from './prisma.service';
 import { mapAuditLog } from './mappers';
 

@@ -4,8 +4,8 @@ import { Prisma } from '@gain/database';
 import type {
   ApiKeyListFilters,
   ApiKeyRepository,
-} from '../../../domain/identity/ports/api-key.repository';
-import { NotFoundError } from '../../../domain/identity/errors';
+} from '../../domain/identity/ports/api-key.repository';
+import { NotFoundError } from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapApiKey } from './mappers';
 

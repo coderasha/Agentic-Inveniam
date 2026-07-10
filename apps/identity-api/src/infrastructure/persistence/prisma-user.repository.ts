@@ -8,12 +8,12 @@ import { Prisma } from '@gain/database';
 import type {
   UserListFilters,
   UserRepository,
-} from '../../../domain/identity/ports/user.repository';
+} from '../../domain/identity/ports/user.repository';
 import {
   ConflictError,
   NotFoundError,
   OptimisticLockError,
-} from '../../../domain/identity/errors';
+} from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapUser } from './mappers';
 

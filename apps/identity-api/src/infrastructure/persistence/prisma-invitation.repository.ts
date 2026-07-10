@@ -8,8 +8,8 @@ import type {
   InvitationListFilters,
   InvitationRecord,
   InvitationRepository,
-} from '../../../domain/identity/ports/invitation.repository';
-import { NotFoundError } from '../../../domain/identity/errors';
+} from '../../domain/identity/ports/invitation.repository';
+import { NotFoundError } from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapInvitation } from './mappers';
 

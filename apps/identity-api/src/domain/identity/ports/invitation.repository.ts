@@ -1,5 +1,4 @@
 import type {
-  AcceptInvitationInput,
   CreateInvitationInput,
   InvitationResponse,
   InvitationStatus,

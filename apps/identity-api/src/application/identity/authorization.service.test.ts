@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AuthorizationService } from '../src/application/identity/authorization.service';
-import type { AbacPolicyRepository } from '../src/domain/identity/ports/abac-policy.repository';
-import type { RequestContext } from '../src/domain/identity/auth.types';
-import { ForbiddenError } from '../src/domain/identity/errors';
+import { AuthorizationService } from './authorization.service';
+import type { AbacPolicyRepository } from '../../domain/identity/ports/abac-policy.repository';
+import type { RequestContext } from '../../domain/identity/auth.types';
+import { ForbiddenError } from '../../domain/identity/errors';
 
 function ctx(permissions: string[]): RequestContext {
   return {

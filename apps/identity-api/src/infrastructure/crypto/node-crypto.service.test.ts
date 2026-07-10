@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NodeCryptoService } from '../src/infrastructure/crypto/node-crypto.service';
+import { NodeCryptoService } from './node-crypto.service';
 
 describe('NodeCryptoService', () => {
   const crypto = new NodeCryptoService();

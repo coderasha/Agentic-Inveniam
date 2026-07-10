@@ -16,50 +16,50 @@ import {
   ROLE_REPOSITORY,
   TOKEN_VERIFIER,
   USER_REPOSITORY,
-} from '../domain/identity/tokens';
-import { PrismaService } from '../infrastructure/persistence/prisma.service';
-import { PrismaOrganizationRepository } from '../infrastructure/persistence/prisma-organization.repository';
-import { PrismaUserRepository } from '../infrastructure/persistence/prisma-user.repository';
-import { PrismaMembershipRepository } from '../infrastructure/persistence/prisma-membership.repository';
-import { PrismaRoleRepository } from '../infrastructure/persistence/prisma-role.repository';
-import { PrismaInvitationRepository } from '../infrastructure/persistence/prisma-invitation.repository';
-import { PrismaApiKeyRepository } from '../infrastructure/persistence/prisma-api-key.repository';
-import { PrismaAuditRepository } from '../infrastructure/persistence/prisma-audit.repository';
-import { PrismaAbacPolicyRepository } from '../infrastructure/persistence/prisma-abac-policy.repository';
-import { PrismaOutboxRepository } from '../infrastructure/persistence/prisma-outbox.repository';
-import { NodeCryptoService } from '../infrastructure/crypto/node-crypto.service';
-import { RedisCacheService } from '../infrastructure/cache/redis-cache.service';
-import { KafkaEventPublisher } from '../infrastructure/messaging/kafka-event.publisher';
-import { OutboxRelayService } from '../infrastructure/messaging/outbox-relay.service';
-import { KeycloakTokenVerifier } from '../infrastructure/auth/keycloak-token.verifier';
-import { AuthorizationService } from '../application/identity/authorization.service';
-import { OrganizationService } from '../application/identity/organization.service';
-import { UserService } from '../application/identity/user.service';
-import { MembershipService } from '../application/identity/membership.service';
-import { RoleService } from '../application/identity/role.service';
+} from './domain/identity/tokens';
+import { PrismaService } from './infrastructure/persistence/prisma.service';
+import { PrismaOrganizationRepository } from './infrastructure/persistence/prisma-organization.repository';
+import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository';
+import { PrismaMembershipRepository } from './infrastructure/persistence/prisma-membership.repository';
+import { PrismaRoleRepository } from './infrastructure/persistence/prisma-role.repository';
+import { PrismaInvitationRepository } from './infrastructure/persistence/prisma-invitation.repository';
+import { PrismaApiKeyRepository } from './infrastructure/persistence/prisma-api-key.repository';
+import { PrismaAuditRepository } from './infrastructure/persistence/prisma-audit.repository';
+import { PrismaAbacPolicyRepository } from './infrastructure/persistence/prisma-abac-policy.repository';
+import { PrismaOutboxRepository } from './infrastructure/persistence/prisma-outbox.repository';
+import { NodeCryptoService } from './infrastructure/crypto/node-crypto.service';
+import { RedisCacheService } from './infrastructure/cache/redis-cache.service';
+import { KafkaEventPublisher } from './infrastructure/messaging/kafka-event.publisher';
+import { OutboxRelayService } from './infrastructure/messaging/outbox-relay.service';
+import { KeycloakTokenVerifier } from './infrastructure/auth/keycloak-token.verifier';
+import { AuthorizationService } from './application/identity/authorization.service';
+import { OrganizationService } from './application/identity/organization.service';
+import { UserService } from './application/identity/user.service';
+import { MembershipService } from './application/identity/membership.service';
+import { RoleService } from './application/identity/role.service';
 import {
   ApiKeyService,
   InvitationService,
-} from '../application/identity/invitation-api-key.service';
+} from './application/identity/invitation-api-key.service';
 import {
   AbacPolicyService,
   AuditService,
-} from '../application/identity/audit-abac.service';
-import { AuthGuard } from './guards/auth.guard';
-import { GlobalExceptionFilter } from './filters/global-exception.filter';
-import { OrganizationsController } from './controllers/organizations.controller';
+} from './application/identity/audit-abac.service';
+import { AuthGuard } from './presentation/guards/auth.guard';
+import { GlobalExceptionFilter } from './presentation/filters/global-exception.filter';
+import { OrganizationsController } from './presentation/controllers/organizations.controller';
 import {
   MembershipsController,
   UsersController,
-} from './controllers/users-memberships.controller';
+} from './presentation/controllers/users-memberships.controller';
 import {
   AbacPoliciesController,
   ApiKeysController,
   AuditLogsController,
   InvitationsController,
   RolesController,
-} from './controllers/roles-invitations.controller';
-import { HealthController } from './controllers/health.controller';
+} from './presentation/controllers/roles-invitations.controller';
+import { HealthController } from './presentation/controllers/health.controller';
 
 @Module({
   imports: [TerminusModule, ScheduleModule.forRoot()],

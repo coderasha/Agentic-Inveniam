@@ -8,13 +8,13 @@ import { Prisma } from '@gain/database';
 import type {
   RoleListFilters,
   RoleRepository,
-} from '../../../domain/identity/ports/role.repository';
+} from '../../domain/identity/ports/role.repository';
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
   OptimisticLockError,
-} from '../../../domain/identity/errors';
+} from '../../domain/identity/errors';
 import { PrismaService } from './prisma.service';
 import { mapRole } from './mappers';
 

@@ -172,6 +172,8 @@ export class InvitationService {
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         displayName: parsed.data.displayName,
+        locale: 'en-US',
+        timezone: 'UTC',
       });
     }
 

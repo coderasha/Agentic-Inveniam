@@ -111,6 +111,8 @@ export class AuthGuard implements CanActivate {
           firstName: nameParts[0] ?? 'User',
           lastName: nameParts[1] ?? 'Account',
           keycloakSubjectId: verified.subject,
+          locale: 'en-US',
+          timezone: 'UTC',
         });
         user = await this.users.update(user.id, {
           version: user.version,
