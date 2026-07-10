@@ -99,6 +99,10 @@ async function seedDemoTenant() {
     where: { slug: 'org_owner', isSystem: true, organizationId: null },
   });
 
+  const platformRole = await prisma.role.findFirstOrThrow({
+    where: { slug: 'platform_super_admin', isSystem: true, organizationId: null },
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@gain.network' },
     update: {},
@@ -136,21 +140,22 @@ async function seedDemoTenant() {
     },
   });
 
-  await prisma.membershipRole.upsert({
-    where: {
-      membershipId_roleId: {
-        membershipId: membership.id,
-        roleId: ownerRole.id,
+  for (const role of [ownerRole, platformRole]) {
+    await prisma.membershipRole.upsert({
+      where: {
+        membershipId_roleId: {
+          membershipId: membership.id,
+          roleId: role.id,
+        },
       },
-    },
-    update: {},
-    create: {
-      membershipId: membership.id,
-      roleId: ownerRole.id,
-      assignedBy: admin.id,
-    },
-  });
-
+      update: {},
+      create: {
+        membershipId: membership.id,
+        roleId: role.id,
+        assignedBy: admin.id,
+      },
+    });
+  }
   await prisma.organizationVersion.create({
     data: {
       organizationId: org.id,

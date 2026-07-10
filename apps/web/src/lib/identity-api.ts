@@ -26,6 +26,10 @@ export class IdentityApiError extends Error {
 }
 
 async function getAccessToken(): Promise<string | undefined> {
+  const devToken = process.env.NEXT_PUBLIC_DEV_ACCESS_TOKEN;
+  if (devToken) {
+    return devToken;
+  }
   const session = await getSession();
   return session?.accessToken;
 }

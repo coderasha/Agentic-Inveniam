@@ -32,6 +32,7 @@ import { RedisCacheService } from './infrastructure/cache/redis-cache.service';
 import { KafkaEventPublisher } from './infrastructure/messaging/kafka-event.publisher';
 import { OutboxRelayService } from './infrastructure/messaging/outbox-relay.service';
 import { KeycloakTokenVerifier } from './infrastructure/auth/keycloak-token.verifier';
+import { CompositeTokenVerifier } from './infrastructure/auth/composite-token.verifier';
 import { AuthorizationService } from './application/identity/authorization.service';
 import { OrganizationService } from './application/identity/organization.service';
 import { UserService } from './application/identity/user.service';
@@ -81,6 +82,7 @@ import { HealthController } from './presentation/controllers/health.controller';
     OutboxRelayService,
     NodeCryptoService,
     KeycloakTokenVerifier,
+    CompositeTokenVerifier,
     AuthorizationService,
     OrganizationService,
     UserService,
@@ -101,7 +103,7 @@ import { HealthController } from './presentation/controllers/health.controller';
     { provide: OUTBOX_REPOSITORY, useClass: PrismaOutboxRepository },
     { provide: EVENT_PUBLISHER, useExisting: KafkaEventPublisher },
     { provide: CACHE_PORT, useExisting: RedisCacheService },
-    { provide: TOKEN_VERIFIER, useExisting: KeycloakTokenVerifier },
+    { provide: TOKEN_VERIFIER, useExisting: CompositeTokenVerifier },
     { provide: CRYPTO_PORT, useExisting: NodeCryptoService },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

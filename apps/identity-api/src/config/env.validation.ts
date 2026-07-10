@@ -22,6 +22,7 @@ export const envSchema = z.object({
   KEYCLOAK_REALM: z.string().min(1),
   KEYCLOAK_CLIENT_ID: z.string().min(1),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
+  IDENTITY_DEV_AUTH_SECRET: z.string().min(32).optional(),
   RATE_LIMIT_TTL_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(120),
   OTEL_SERVICE_NAME: z.string().default('gain-identity-api'),

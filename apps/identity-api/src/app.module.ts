@@ -12,6 +12,11 @@ import { IdentityModule } from './identity.module';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      envFilePath: [
+        '../../.env',
+        '.env',
+        '../../../.env',
+      ],
       load: [appConfig],
       validate: validateEnv,
     }),
