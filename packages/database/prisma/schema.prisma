@@ -394,3 +394,197 @@ model OutboxMessage {
   @@index([aggregateType, aggregateId])
   @@map("outbox_messages")
 }
+
+// ─── Digital Twin Engine ─────────────────────────────────────────────────────
+
+enum TwinStatus {
+  draft
+  active
+  suspended
+  archived
+}
+
+enum TwinAssetClass {
+  real_estate
+  private_equity
+  private_credit
+  infrastructure
+  fund
+  collectible
+  operating_company
+  other
+}
+
+enum TwinLifecycleStage {
+  origination
+  diligence
+  under_management
+  exit
+  retired
+}
+
+enum TwinAttributeDataType {
+  string
+  number
+  boolean
+  datetime
+  json
+  money
+  percentage
+}
+
+enum TwinRelationshipType {
+  parent_of
+  child_of
+  related_to
+  collateral_for
+  owned_by
+  managed_by
+  depends_on
+}
+
+enum TwinSignalSeverity {
+  info
+  warning
+  critical
+}
+
+enum TwinInsightKind {
+  summary
+  risk
+  valuation_driver
+  anomaly
+  recommendation
+}
+
+model DigitalTwin {
+  id                String             @id @default(uuid()) @db.Uuid
+  organizationId    String             @map("organization_id") @db.Uuid
+  name              String             @db.VarChar(200)
+  slug              String             @db.VarChar(120)
+  description       String?            @db.VarChar(4000)
+  assetClass        TwinAssetClass     @map("asset_class")
+  lifecycleStage    TwinLifecycleStage @default(origination) @map("lifecycle_stage")
+  status            TwinStatus         @default(draft)
+  externalReference String?            @map("external_reference") @db.VarChar(200)
+  currencyCode      String             @default("USD") @map("currency_code") @db.Char(3)
+  tags              String[]           @default([])
+  metadata          Json               @default("{}")
+  completenessScore Float              @default(0) @map("completeness_score")
+  publishedAt       DateTime?          @map("published_at") @db.Timestamptz(3)
+  version           Int                @default(1)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime?          @map("deleted_at") @db.Timestamptz(3)
+
+  attributes    TwinAttribute[]
+  versions      TwinVersion[]
+  signals       TwinSignal[]
+  insights      TwinInsight[]
+  relationshipsFrom TwinRelationship[] @relation("TwinRelationshipFrom")
+  relationshipsTo   TwinRelationship[] @relation("TwinRelationshipTo")
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([organizationId, assetClass])
+  @@index([lifecycleStage])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("digital_twins")
+}
+
+model TwinVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  twinId          String   @map("twin_id") @db.Uuid
+  version         Int
+  snapshot        Json
+  changedByUserId String?  @map("changed_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  twin DigitalTwin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@unique([twinId, version])
+  @@index([twinId, createdAt])
+  @@map("twin_versions")
+}
+
+model TwinAttribute {
+  id          String                @id @default(uuid()) @db.Uuid
+  twinId      String                @map("twin_id") @db.Uuid
+  key         String                @db.VarChar(100)
+  label       String                @db.VarChar(200)
+  dataType    TwinAttributeDataType @map("data_type")
+  value       Json
+  unit        String?               @db.VarChar(32)
+  source      String?               @db.VarChar(100)
+  confidence  Float?
+  effectiveAt DateTime?             @map("effective_at") @db.Timestamptz(3)
+  version     Int                   @default(1)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  twin DigitalTwin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@unique([twinId, key])
+  @@index([twinId, deletedAt])
+  @@map("twin_attributes")
+}
+
+model TwinRelationship {
+  id               String                @id @default(uuid()) @db.Uuid
+  organizationId   String                @map("organization_id") @db.Uuid
+  fromTwinId       String                @map("from_twin_id") @db.Uuid
+  toTwinId         String                @map("to_twin_id") @db.Uuid
+  relationshipType TwinRelationshipType  @map("relationship_type")
+  label            String?               @db.VarChar(200)
+  metadata         Json                  @default("{}")
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  fromTwin DigitalTwin @relation("TwinRelationshipFrom", fields: [fromTwinId], references: [id], onDelete: Cascade)
+  toTwin   DigitalTwin @relation("TwinRelationshipTo", fields: [toTwinId], references: [id], onDelete: Cascade)
+
+  @@unique([fromTwinId, toTwinId, relationshipType])
+  @@index([organizationId])
+  @@index([toTwinId])
+  @@map("twin_relationships")
+}
+
+model TwinSignal {
+  id          String             @id @default(uuid()) @db.Uuid
+  twinId      String             @map("twin_id") @db.Uuid
+  signalType  String             @map("signal_type") @db.VarChar(100)
+  severity    TwinSignalSeverity @default(info)
+  title       String             @db.VarChar(300)
+  payload     Json
+  source      String?            @db.VarChar(100)
+  observedAt  DateTime           @map("observed_at") @db.Timestamptz(3)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  twin DigitalTwin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, observedAt])
+  @@index([twinId, severity])
+  @@index([signalType])
+  @@map("twin_signals")
+}
+
+model TwinInsight {
+  id          String          @id @default(uuid()) @db.Uuid
+  twinId      String          @map("twin_id") @db.Uuid
+  kind        TwinInsightKind
+  title       String          @db.VarChar(300)
+  summary     String          @db.VarChar(4000)
+  confidence  Float
+  model       String?         @db.VarChar(100)
+  evidence    Json            @default("{}")
+  generatedAt DateTime        @map("generated_at") @db.Timestamptz(3)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  twin DigitalTwin @relation(fields: [twinId], references: [id], onDelete: Cascade)
+
+  @@index([twinId, kind, generatedAt])
+  @@map("twin_insights")
+}
