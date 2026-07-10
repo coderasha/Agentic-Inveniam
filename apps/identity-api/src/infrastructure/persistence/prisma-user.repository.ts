@@ -225,4 +225,20 @@ export class PrismaUserRepository implements UserRepository {
       data: { lastLoginAt: new Date() },
     });
   }
+
+  async linkKeycloakSubject(
+    id: string,
+    subjectId: string,
+  ): Promise<UserResponse> {
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        keycloakSubjectId: subjectId,
+        emailVerified: true,
+        status: 'active',
+        version: { increment: 1 },
+      },
+    });
+    return mapUser(user);
+  }
 }

@@ -10,22 +10,22 @@ export const envSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
   CORS_ORIGINS: z.string().default('http://localhost:3000'),
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
   KAFKA_BROKERS: z.string().min(1),
   KAFKA_CLIENT_ID: z.string().default('gain-identity-api'),
   KAFKA_GROUP_ID: z.string().default('gain-identity-api'),
-  KEYCLOAK_ISSUER: z.string().url(),
-  KEYCLOAK_JWKS_URI: z.string().url(),
+  KEYCLOAK_ISSUER: z.string().min(1),
+  KEYCLOAK_JWKS_URI: z.string().min(1),
   KEYCLOAK_AUDIENCE: z.string().min(1),
-  KEYCLOAK_BASE_URL: z.string().url(),
+  KEYCLOAK_BASE_URL: z.string().min(1),
   KEYCLOAK_REALM: z.string().min(1),
   KEYCLOAK_CLIENT_ID: z.string().min(1),
   KEYCLOAK_CLIENT_SECRET: z.string().min(1),
   RATE_LIMIT_TTL_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(120),
   OTEL_SERVICE_NAME: z.string().default('gain-identity-api'),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

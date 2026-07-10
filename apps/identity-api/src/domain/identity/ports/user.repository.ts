@@ -20,4 +20,5 @@ export interface UserRepository {
   update(id: string, input: UpdateUserInput): Promise<UserResponse>;
   softDelete(id: string, version: number): Promise<void>;
   markLogin(id: string): Promise<void>;
+  linkKeycloakSubject(id: string, subjectId: string): Promise<UserResponse>;
 }
