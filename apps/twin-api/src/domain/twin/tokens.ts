@@ -1,0 +1,10 @@
+export const TWIN_REPOSITORY = Symbol('TwinRepository');
+export const ATTRIBUTE_REPOSITORY = Symbol('AttributeRepository');
+export const RELATIONSHIP_REPOSITORY = Symbol('RelationshipRepository');
+export const SIGNAL_REPOSITORY = Symbol('SignalRepository');
+export const INSIGHT_REPOSITORY = Symbol('InsightRepository');
+export const OUTBOX_REPOSITORY = Symbol('OutboxRepository');
+export const EVENT_PUBLISHER = Symbol('EventPublisher');
+export const CACHE_PORT = Symbol('CachePort');
+export const TOKEN_VERIFIER = Symbol('TokenVerifier');
+export const CRYPTO_PORT = Symbol('CryptoPort');

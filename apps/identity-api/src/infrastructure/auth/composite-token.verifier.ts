@@ -85,12 +85,14 @@ export async function mintDevAccessToken(params: {
   subject: string;
   email: string;
   audience: string;
+  permissions?: string[];
   expiresInSeconds?: number;
 }): Promise<string> {
   const key = new TextEncoder().encode(params.secret);
   return new SignJWT({
     email: params.email,
     email_verified: true,
+    permissions: params.permissions ?? [],
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(params.subject)
