@@ -1549,3 +1549,116 @@ model PortfolioSnapshot {
   @@index([organizationId, asOfDate])
   @@map("portfolio_snapshots")
 }
+
+// ─── Investor CRM ────────────────────────────────────────────────────────────
+
+enum InvestorType {
+  individual
+  family_office
+  institution
+  fund
+  advisor
+  other
+}
+
+enum InvestorStatus {
+  prospect
+  qualified
+  active
+  inactive
+  do_not_contact
+}
+
+enum InvestorPipelineStage {
+  lead
+  contacted
+  meeting
+  diligence
+  committed
+  closed
+  lost
+}
+
+enum InteractionChannel {
+  email
+  call
+  meeting
+  note
+  event
+  other
+}
+
+enum CommitmentStatus {
+  soft
+  hard
+  funded
+  cancelled
+}
+
+model Investor {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  displayName    String                @map("display_name") @db.VarChar(200)
+  investorType   InvestorType          @default(individual) @map("investor_type")
+  status         InvestorStatus        @default(prospect)
+  pipelineStage  InvestorPipelineStage @default(lead) @map("pipeline_stage")
+  email          String?               @db.VarChar(320)
+  phone          String?               @db.VarChar(40)
+  company        String?               @db.VarChar(200)
+  countryCode    String?               @map("country_code") @db.Char(2)
+  ownerRef       String?               @map("owner_ref") @db.VarChar(200)
+  tags           String[]              @default([])
+  metadata       Json                  @default("{}")
+  version        Int                   @default(1)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz(3)
+
+  interactions InvestorInteraction[]
+  commitments  InvestorCommitment[]
+
+  @@index([organizationId, status, pipelineStage])
+  @@index([organizationId, displayName])
+  @@index([email])
+  @@map("investors")
+}
+
+model InvestorInteraction {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  investorId     String             @map("investor_id") @db.Uuid
+  channel        InteractionChannel @default(note)
+  subject        String             @db.VarChar(300)
+  body           String?            @db.VarChar(8000)
+  occurredAt     DateTime           @default(now()) @map("occurred_at") @db.Timestamptz(3)
+  metadata       Json               @default("{}")
+  createdByUserId String?           @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  investor Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, investorId, occurredAt])
+  @@map("investor_interactions")
+}
+
+model InvestorCommitment {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  investorId     String           @map("investor_id") @db.Uuid
+  portfolioId    String?          @map("portfolio_id") @db.Uuid
+  label          String           @db.VarChar(200)
+  amountMinor    BigInt           @map("amount_minor")
+  currencyCode   String           @default("USD") @map("currency_code") @db.Char(3)
+  status         CommitmentStatus @default(soft)
+  committedAt    DateTime         @default(now()) @map("committed_at") @db.Timestamptz(3)
+  metadata       Json             @default("{}")
+  createdByUserId String?         @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  investor Investor @relation(fields: [investorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, investorId, status])
+  @@index([portfolioId])
+  @@map("investor_commitments")
+}

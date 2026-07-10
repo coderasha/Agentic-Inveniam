@@ -9,3 +9,4 @@ export * from './valuation/index.js';
 export * from './tokenization/index.js';
 export * from './marketplace/index.js';
 export * from './portfolio/index.js';
+export * from './crm/index.js';

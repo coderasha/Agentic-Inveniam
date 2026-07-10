@@ -295,4 +295,48 @@ export const platformApi = {
       `/portfolios/${id}/snapshots?page=1&pageSize=20`,
       { organizationId },
     ),
+  crmPipeline: (organizationId: string) =>
+    platformFetch<{
+      stages: Record<string, number>;
+      commitments: Record<string, number | string>;
+      investorCount: number;
+    }>('/crm/pipeline', { organizationId }),
+  listInvestors: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/crm/investors?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createInvestor: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/crm/investors', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  updateInvestor: (
+    organizationId: string,
+    id: string,
+    body: Record<string, unknown>,
+  ) =>
+    platformFetch<Record<string, unknown>>(`/crm/investors/${id}`, {
+      method: 'PATCH',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  createCrmInteraction: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/crm/interactions', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  createCrmCommitment: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/crm/commitments', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listCrmCommitments: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/crm/commitments?page=1&pageSize=50',
+      { organizationId },
+    ),
 };

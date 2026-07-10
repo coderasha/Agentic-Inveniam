@@ -21,6 +21,6 @@ OpenAPI: http://localhost:3003/api/docs
 
 ## Not claimed as complete platform
 
-Still outstanding: Investor CRM, Compliance suite, AI Agents/Chat/Marketplace, Analytics, full Administration, OpenSearch/Qdrant/Neo4j production wiring, live Fabric/Polygon connectors.
+Still outstanding: Compliance suite, AI Agents/Chat/Marketplace, Analytics, full Administration, OpenSearch/Qdrant/Neo4j production wiring, live Fabric/Polygon connectors.
 
-Module docs live under `docs/` (including [Portfolio](../portfolio/README.md)).
+Module docs live under `docs/` (including [CRM](../crm/README.md)).
