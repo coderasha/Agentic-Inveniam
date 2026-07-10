@@ -1662,3 +1662,133 @@ model InvestorCommitment {
   @@index([portfolioId])
   @@map("investor_commitments")
 }
+
+// ─── Compliance ──────────────────────────────────────────────────────────────
+
+enum CompliancePolicyStatus {
+  draft
+  active
+  archived
+}
+
+enum ComplianceSubjectType {
+  asset
+  twin
+  document
+  investor
+  portfolio
+  token_instrument
+  organization
+  custom
+}
+
+enum ComplianceCheckStatus {
+  passed
+  failed
+  warning
+  error
+}
+
+enum ComplianceFindingSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum ComplianceFindingStatus {
+  open
+  accepted
+  remediated
+  waived
+}
+
+enum ComplianceCaseStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+model CompliancePolicy {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  name           String                  @db.VarChar(200)
+  slug           String                  @db.VarChar(120)
+  description    String?                 @db.VarChar(2000)
+  subjectType    ComplianceSubjectType   @map("subject_type")
+  status         CompliancePolicyStatus  @default(active)
+  rules          Json
+  version        Int                     @default(1)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?               @map("deleted_at") @db.Timestamptz(3)
+
+  checks ComplianceCheck[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status, subjectType])
+  @@map("compliance_policies")
+}
+
+model ComplianceCheck {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  policyId       String                @map("policy_id") @db.Uuid
+  subjectType    ComplianceSubjectType @map("subject_type")
+  subjectId      String                @map("subject_id") @db.Uuid
+  status         ComplianceCheckStatus
+  summary        String                @db.VarChar(1000)
+  subjectSnapshot Json                 @map("subject_snapshot")
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  policy   CompliancePolicy    @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  findings ComplianceFinding[]
+  cases    ComplianceCase[]
+
+  @@index([organizationId, status, createdAt])
+  @@index([policyId, createdAt])
+  @@index([subjectType, subjectId])
+  @@map("compliance_checks")
+}
+
+model ComplianceFinding {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  checkId        String                    @map("check_id") @db.Uuid
+  ruleId         String                    @map("rule_id") @db.VarChar(64)
+  severity       ComplianceFindingSeverity
+  status         ComplianceFindingStatus   @default(open)
+  message        String                    @db.VarChar(500)
+  details        Json                      @default("{}")
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  check ComplianceCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, severity])
+  @@index([checkId])
+  @@map("compliance_findings")
+}
+
+model ComplianceCase {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  checkId        String               @map("check_id") @db.Uuid
+  title          String               @db.VarChar(300)
+  status         ComplianceCaseStatus @default(open)
+  assigneeRef    String?              @map("assignee_ref") @db.VarChar(200)
+  notes          String?              @db.VarChar(4000)
+  dueAt          DateTime?            @map("due_at") @db.Timestamptz(3)
+  resolvedAt     DateTime?            @map("resolved_at") @db.Timestamptz(3)
+  createdByUserId String?             @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  check ComplianceCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt])
+  @@index([checkId])
+  @@map("compliance_cases")
+}

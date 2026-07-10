@@ -19,6 +19,7 @@ import {
 } from './infrastructure/services';
 import { NotificationModule } from './notification/notification.module';
 import { ProvenanceModule } from './provenance/provenance.module';
+import { ComplianceModule } from './compliance/compliance.module';
 import { CrmModule } from './crm/crm.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
@@ -62,7 +63,7 @@ class PlatformCoreModule {}
       limit: Number(process.env.RATE_LIMIT_LIMIT ?? 120),
     }]),
     ScheduleModule.forRoot(), TerminusModule, PlatformCoreModule,
-    DocumentModule, AssetModule, WorkflowModule, NotificationModule, GraphModule, ProvenanceModule, TrustModule, ValuationModule, TokenizationModule, MarketplaceModule, PortfolioModule, CrmModule,
+    DocumentModule, AssetModule, WorkflowModule, NotificationModule, GraphModule, ProvenanceModule, TrustModule, ValuationModule, TokenizationModule, MarketplaceModule, PortfolioModule, CrmModule, ComplianceModule,
   ],
 })
 export class AppModule {}

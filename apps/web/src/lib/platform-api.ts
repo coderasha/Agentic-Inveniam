@@ -339,4 +339,42 @@ export const platformApi = {
       '/crm/commitments?page=1&pageSize=50',
       { organizationId },
     ),
+  listCompliancePolicies: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/compliance/policies?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createCompliancePolicy: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/compliance/policies', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  runComplianceCheck: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/compliance/checks', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listComplianceChecks: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/compliance/checks?page=1&pageSize=50',
+      { organizationId },
+    ),
+  listComplianceFindings: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/compliance/findings?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createComplianceCase: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/compliance/cases', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listComplianceCases: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/compliance/cases?page=1&pageSize=50',
+      { organizationId },
+    ),
 };

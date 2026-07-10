@@ -10,3 +10,4 @@ export * from './tokenization/index.js';
 export * from './marketplace/index.js';
 export * from './portfolio/index.js';
 export * from './crm/index.js';
+export * from './compliance/index.js';
