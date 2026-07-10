@@ -1,0 +1,30 @@
+{
+  "name": "gain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Global Asset Intelligence Network — AI-native operating system for private assets",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @gain/database generate",
+    "db:migrate": "pnpm --filter @gain/database migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @gain/database migrate:deploy",
+    "db:seed": "pnpm --filter @gain/database seed",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,578 @@
+import { z } from 'zod';
+
+/** Canonical permission catalog for GAIN Identity (RBAC). */
+export const PERMISSIONS = [
+  'identity:organization:create',
+  'identity:organization:read',
+  'identity:organization:update',
+  'identity:organization:delete',
+  'identity:organization:manage_settings',
+  'identity:user:invite',
+  'identity:user:read',
+  'identity:user:update',
+  'identity:user:deactivate',
+  'identity:user:delete',
+  'identity:membership:manage',
+  'identity:role:create',
+  'identity:role:read',
+  'identity:role:update',
+  'identity:role:delete',
+  'identity:role:assign',
+  'identity:permission:read',
+  'identity:invitation:create',
+  'identity:invitation:revoke',
+  'identity:api_key:create',
+  'identity:api_key:revoke',
+  'identity:api_key:read',
+  'identity:audit:read',
+  'identity:session:revoke',
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number];
+
+export const permissionSchema = z.enum(PERMISSIONS);
+
+export const SYSTEM_ROLES = [
+  'platform_super_admin',
+  'org_owner',
+  'org_admin',
+  'org_member',
+  'org_viewer',
+  'service_account',
+] as const;
+
+export type SystemRole = (typeof SYSTEM_ROLES)[number];
+
+export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> = {
+  platform_super_admin: PERMISSIONS,
+  org_owner: [
+    'identity:organization:read',
+    'identity:organization:update',
+    'identity:organization:delete',
+    'identity:organization:manage_settings',
+    'identity:user:invite',
+    'identity:user:read',
+    'identity:user:update',
+    'identity:user:deactivate',
+    'identity:user:delete',
+    'identity:membership:manage',
+    'identity:role:create',
+    'identity:role:read',
+    'identity:role:update',
+    'identity:role:delete',
+    'identity:role:assign',
+    'identity:permission:read',
+    'identity:invitation:create',
+    'identity:invitation:revoke',
+    'identity:api_key:create',
+    'identity:api_key:revoke',
+    'identity:api_key:read',
+    'identity:audit:read',
+    'identity:session:revoke',
+  ],
+  org_admin: [
+    'identity:organization:read',
+    'identity:organization:update',
+    'identity:organization:manage_settings',
+    'identity:user:invite',
+    'identity:user:read',
+    'identity:user:update',
+    'identity:user:deactivate',
+    'identity:membership:manage',
+    'identity:role:create',
+    'identity:role:read',
+    'identity:role:update',
+    'identity:role:assign',
+    'identity:permission:read',
+    'identity:invitation:create',
+    'identity:invitation:revoke',
+    'identity:api_key:create',
+    'identity:api_key:revoke',
+    'identity:api_key:read',
+    'identity:audit:read',
+    'identity:session:revoke',
+  ],
+  org_member: [
+    'identity:organization:read',
+    'identity:user:read',
+    'identity:role:read',
+    'identity:permission:read',
+  ],
+  org_viewer: [
+    'identity:organization:read',
+    'identity:user:read',
+    'identity:role:read',
+    'identity:permission:read',
+  ],
+  service_account: [
+    'identity:organization:read',
+    'identity:user:read',
+    'identity:role:read',
+    'identity:permission:read',
+    'identity:api_key:read',
+  ],
+};
+
+export const organizationStatusSchema = z.enum([
+  'active',
+  'suspended',
+  'pending_verification',
+  'archived',
+]);
+export type OrganizationStatus = z.infer<typeof organizationStatusSchema>;
+
+export const userStatusSchema = z.enum([
+  'active',
+  'invited',
+  'suspended',
+  'deactivated',
+]);
+export type UserStatus = z.infer<typeof userStatusSchema>;
+
+export const membershipStatusSchema = z.enum([
+  'active',
+  'invited',
+  'suspended',
+  'removed',
+]);
+export type MembershipStatus = z.infer<typeof membershipStatusSchema>;
+
+export const invitationStatusSchema = z.enum([
+  'pending',
+  'accepted',
+  'revoked',
+  'expired',
+]);
+export type InvitationStatus = z.infer<typeof invitationStatusSchema>;
+
+export const paginationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  search: z.string().max(200).optional(),
+});
+
+export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
+
+export const paginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
+  z.object({
+    data: z.array(itemSchema),
+    meta: z.object({
+      page: z.number().int(),
+      pageSize: z.number().int(),
+      totalItems: z.number().int(),
+      totalPages: z.number().int(),
+      hasNextPage: z.boolean(),
+      hasPreviousPage: z.boolean(),
+    }),
+  });
+
+export function buildPaginationMeta(
+  page: number,
+  pageSize: number,
+  totalItems: number,
+) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  return {
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  };
+}
+
+export const createOrganizationSchema = z.object({
+  name: z.string().min(2).max(200).trim(),
+  slug: z
+    .string()
+    .min(2)
+    .max(100)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase kebab-case'),
+  legalName: z.string().min(2).max(300).optional(),
+  description: z.string().max(2000).optional(),
+  website: z.string().url().optional(),
+  industry: z.string().max(100).optional(),
+  countryCode: z
+    .string()
+    .length(2)
+    .regex(/^[A-Z]{2}$/, 'ISO 3166-1 alpha-2 country code required')
+    .optional(),
+  timezone: z.string().max(64).default('UTC'),
+  parentOrganizationId: z.string().uuid().optional(),
+  settings: z.record(z.unknown()).optional(),
+});
+
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+
+export const updateOrganizationSchema = createOrganizationSchema
+  .omit({ slug: true, parentOrganizationId: true })
+  .partial()
+  .extend({
+    status: organizationStatusSchema.optional(),
+    version: z.number().int().min(1),
+  });
+
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
+
+export const organizationResponseSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  slug: z.string(),
+  legalName: z.string().nullable(),
+  description: z.string().nullable(),
+  website: z.string().nullable(),
+  industry: z.string().nullable(),
+  countryCode: z.string().nullable(),
+  timezone: z.string(),
+  status: organizationStatusSchema,
+  parentOrganizationId: z.string().uuid().nullable(),
+  settings: z.record(z.unknown()),
+  version: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().nullable(),
+});
+
+export type OrganizationResponse = z.infer<typeof organizationResponseSchema>;
+
+export const createUserSchema = z.object({
+  email: z.string().email().max(320).toLowerCase(),
+  firstName: z.string().min(1).max(100).trim(),
+  lastName: z.string().min(1).max(100).trim(),
+  displayName: z.string().min(1).max(200).optional(),
+  phone: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/, 'E.164 phone format required')
+    .optional(),
+  locale: z.string().max(16).default('en-US'),
+  timezone: z.string().max(64).default('UTC'),
+  keycloakSubjectId: z.string().min(1).max(128).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const updateUserSchema = createUserSchema
+  .omit({ email: true, keycloakSubjectId: true })
+  .partial()
+  .extend({
+    status: userStatusSchema.optional(),
+    version: z.number().int().min(1),
+  });
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+export const userResponseSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  firstName: z.string(),
+  lastName: z.string(),
+  displayName: z.string().nullable(),
+  phone: z.string().nullable(),
+  locale: z.string(),
+  timezone: z.string(),
+  status: userStatusSchema,
+  emailVerified: z.boolean(),
+  keycloakSubjectId: z.string().nullable(),
+  lastLoginAt: z.string().datetime().nullable(),
+  metadata: z.record(z.unknown()),
+  version: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  deletedAt: z.string().datetime().nullable(),
+});
+
+export type UserResponse = z.infer<typeof userResponseSchema>;
+
+export const createMembershipSchema = z.object({
+  userId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  roleIds: z.array(z.string().uuid()).min(1),
+  title: z.string().max(200).optional(),
+  department: z.string().max(200).optional(),
+  isPrimary: z.boolean().default(false),
+});
+
+export type CreateMembershipInput = z.infer<typeof createMembershipSchema>;
+
+export const updateMembershipSchema = z.object({
+  roleIds: z.array(z.string().uuid()).min(1).optional(),
+  title: z.string().max(200).optional().nullable(),
+  department: z.string().max(200).optional().nullable(),
+  status: membershipStatusSchema.optional(),
+  isPrimary: z.boolean().optional(),
+  version: z.number().int().min(1),
+});
+
+export type UpdateMembershipInput = z.infer<typeof updateMembershipSchema>;
+
+export const membershipResponseSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  title: z.string().nullable(),
+  department: z.string().nullable(),
+  status: membershipStatusSchema,
+  isPrimary: z.boolean(),
+  roles: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      slug: z.string(),
+    }),
+  ),
+  permissions: z.array(permissionSchema),
+  version: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type MembershipResponse = z.infer<typeof membershipResponseSchema>;
+
+export const createRoleSchema = z.object({
+  organizationId: z.string().uuid().optional(),
+  name: z.string().min(2).max(100).trim(),
+  slug: z
+    .string()
+    .min(2)
+    .max(100)
+    .regex(/^[a-z0-9]+(?:_[a-z0-9]+)*$/, 'Slug must be lowercase snake_case'),
+  description: z.string().max(1000).optional(),
+  permissions: z.array(permissionSchema).min(1),
+  isSystem: z.boolean().default(false),
+});
+
+export type CreateRoleInput = z.infer<typeof createRoleSchema>;
+
+export const updateRoleSchema = z.object({
+  name: z.string().min(2).max(100).trim().optional(),
+  description: z.string().max(1000).optional().nullable(),
+  permissions: z.array(permissionSchema).min(1).optional(),
+  version: z.number().int().min(1),
+});
+
+export type UpdateRoleInput = z.infer<typeof updateRoleSchema>;
+
+export const roleResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid().nullable(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().nullable(),
+  permissions: z.array(permissionSchema),
+  isSystem: z.boolean(),
+  version: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type RoleResponse = z.infer<typeof roleResponseSchema>;
+
+export const createInvitationSchema = z.object({
+  organizationId: z.string().uuid(),
+  email: z.string().email().max(320).toLowerCase(),
+  roleIds: z.array(z.string().uuid()).min(1),
+  message: z.string().max(1000).optional(),
+  expiresInHours: z.number().int().min(1).max(720).default(168),
+});
+
+export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().min(32).max(256),
+  firstName: z.string().min(1).max(100).trim(),
+  lastName: z.string().min(1).max(100).trim(),
+  displayName: z.string().min(1).max(200).optional(),
+  password: z
+    .string()
+    .min(12)
+    .max(128)
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/,
+      'Password must include upper, lower, digit, and special character',
+    )
+    .optional(),
+});
+
+export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
+
+export const invitationResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  email: z.string().email(),
+  status: invitationStatusSchema,
+  roleIds: z.array(z.string().uuid()),
+  invitedByUserId: z.string().uuid(),
+  expiresAt: z.string().datetime(),
+  acceptedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type InvitationResponse = z.infer<typeof invitationResponseSchema>;
+
+export const createApiKeySchema = z.object({
+  organizationId: z.string().uuid(),
+  name: z.string().min(2).max(100).trim(),
+  description: z.string().max(500).optional(),
+  roleIds: z.array(z.string().uuid()).min(1),
+  expiresAt: z.string().datetime().optional(),
+  scopes: z.array(permissionSchema).optional(),
+});
+
+export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+
+export const apiKeyCreatedResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  name: z.string(),
+  keyPrefix: z.string(),
+  /** Returned only once at creation time. */
+  secret: z.string(),
+  expiresAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export type ApiKeyCreatedResponse = z.infer<typeof apiKeyCreatedResponseSchema>;
+
+export const apiKeyResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  keyPrefix: z.string(),
+  status: z.enum(['active', 'revoked', 'expired']),
+  lastUsedAt: z.string().datetime().nullable(),
+  expiresAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  revokedAt: z.string().datetime().nullable(),
+});
+
+export type ApiKeyResponse = z.infer<typeof apiKeyResponseSchema>;
+
+export const auditActionSchema = z.enum([
+  'create',
+  'update',
+  'delete',
+  'soft_delete',
+  'restore',
+  'invite',
+  'accept_invite',
+  'revoke',
+  'assign_role',
+  'revoke_role',
+  'login',
+  'logout',
+  'permission_denied',
+]);
+
+export type AuditAction = z.infer<typeof auditActionSchema>;
+
+export const auditLogResponseSchema = z.object({
+  id: z.string().uuid(),
+  organizationId: z.string().uuid().nullable(),
+  actorUserId: z.string().uuid().nullable(),
+  actorType: z.enum(['user', 'api_key', 'system', 'service']),
+  action: auditActionSchema,
+  resourceType: z.string(),
+  resourceId: z.string().nullable(),
+  correlationId: z.string().uuid(),
+  ipAddress: z.string().nullable(),
+  userAgent: z.string().nullable(),
+  changes: z.record(z.unknown()).nullable(),
+  metadata: z.record(z.unknown()),
+  createdAt: z.string().datetime(),
+});
+
+export type AuditLogResponse = z.infer<typeof auditLogResponseSchema>;
+
+export const abacPolicyEffectSchema = z.enum(['allow', 'deny']);
+
+export const createAbacPolicySchema = z.object({
+  organizationId: z.string().uuid(),
+  name: z.string().min(2).max(100),
+  description: z.string().max(1000).optional(),
+  effect: abacPolicyEffectSchema,
+  resourceType: z.string().min(1).max(100),
+  actions: z.array(z.string().min(1)).min(1),
+  conditions: z.record(z.unknown()),
+  priority: z.number().int().min(0).max(10000).default(100),
+  enabled: z.boolean().default(true),
+});
+
+export type CreateAbacPolicyInput = z.infer<typeof createAbacPolicySchema>;
+
+export const abacPolicyResponseSchema = createAbacPolicySchema.extend({
+  id: z.string().uuid(),
+  version: z.number().int(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export type AbacPolicyResponse = z.infer<typeof abacPolicyResponseSchema>;
+
+export const authContextSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  organizationId: z.string().uuid().optional(),
+  permissions: z.array(permissionSchema),
+  roles: z.array(z.string()),
+  sessionId: z.string().optional(),
+  apiKeyId: z.string().uuid().optional(),
+  correlationId: z.string().uuid(),
+});
+
+export type AuthContext = z.infer<typeof authContextSchema>;
+
+export const IDENTITY_KAFKA_TOPICS = {
+  ORGANIZATION_CREATED: 'gain.identity.organization.created',
+  ORGANIZATION_UPDATED: 'gain.identity.organization.updated',
+  ORGANIZATION_DELETED: 'gain.identity.organization.deleted',
+  USER_CREATED: 'gain.identity.user.created',
+  USER_UPDATED: 'gain.identity.user.updated',
+  USER_DEACTIVATED: 'gain.identity.user.deactivated',
+  MEMBERSHIP_CREATED: 'gain.identity.membership.created',
+  MEMBERSHIP_UPDATED: 'gain.identity.membership.updated',
+  MEMBERSHIP_REMOVED: 'gain.identity.membership.removed',
+  INVITATION_CREATED: 'gain.identity.invitation.created',
+  INVITATION_ACCEPTED: 'gain.identity.invitation.accepted',
+  INVITATION_REVOKED: 'gain.identity.invitation.revoked',
+  ROLE_ASSIGNED: 'gain.identity.role.assigned',
+  API_KEY_CREATED: 'gain.identity.api_key.created',
+  API_KEY_REVOKED: 'gain.identity.api_key.revoked',
+  AUDIT_RECORDED: 'gain.identity.audit.recorded',
+} as const;
+
+export type IdentityKafkaTopic =
+  (typeof IDENTITY_KAFKA_TOPICS)[keyof typeof IDENTITY_KAFKA_TOPICS];
+
+export const domainEventSchema = z.object({
+  eventId: z.string().uuid(),
+  eventType: z.string(),
+  aggregateType: z.string(),
+  aggregateId: z.string().uuid(),
+  occurredAt: z.string().datetime(),
+  correlationId: z.string().uuid(),
+  causationId: z.string().uuid().optional(),
+  actorUserId: z.string().uuid().nullable(),
+  organizationId: z.string().uuid().nullable(),
+  payload: z.record(z.unknown()),
+  metadata: z.record(z.unknown()).default({}),
+});
+
+export type DomainEvent = z.infer<typeof domainEventSchema>;
+
+export const apiErrorSchema = z.object({
+  statusCode: z.number().int(),
+  error: z.string(),
+  message: z.string(),
+  correlationId: z.string().uuid(),
+  details: z.array(z.record(z.unknown())).optional(),
+  timestamp: z.string().datetime(),
+  path: z.string().optional(),
+});
+
+export type ApiError = z.infer<typeof apiErrorSchema>;

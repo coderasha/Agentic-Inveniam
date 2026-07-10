@@ -1,0 +1,396 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationStatus {
+  active
+  suspended
+  pending_verification
+  archived
+}
+
+enum UserStatus {
+  active
+  invited
+  suspended
+  deactivated
+}
+
+enum MembershipStatus {
+  active
+  invited
+  suspended
+  removed
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum ApiKeyStatus {
+  active
+  revoked
+  expired
+}
+
+enum ActorType {
+  user
+  api_key
+  system
+  service
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  soft_delete
+  restore
+  invite
+  accept_invite
+  revoke
+  assign_role
+  revoke_role
+  login
+  logout
+  permission_denied
+}
+
+enum AbacEffect {
+  allow
+  deny
+}
+
+enum OutboxStatus {
+  pending
+  published
+  failed
+}
+
+model Organization {
+  id                   String             @id @default(uuid()) @db.Uuid
+  name                 String             @db.VarChar(200)
+  slug                 String             @unique @db.VarChar(100)
+  legalName            String?            @map("legal_name") @db.VarChar(300)
+  description          String?            @db.VarChar(2000)
+  website              String?            @db.VarChar(500)
+  industry             String?            @db.VarChar(100)
+  countryCode          String?            @map("country_code") @db.Char(2)
+  timezone             String             @default("UTC") @db.VarChar(64)
+  status               OrganizationStatus @default(pending_verification)
+  parentOrganizationId String?            @map("parent_organization_id") @db.Uuid
+  settings             Json               @default("{}")
+  version              Int                @default(1)
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt            DateTime?          @map("deleted_at") @db.Timestamptz(3)
+
+  parent       Organization?  @relation("OrgHierarchy", fields: [parentOrganizationId], references: [id])
+  children     Organization[] @relation("OrgHierarchy")
+  memberships  Membership[]
+  roles        Role[]
+  invitations  Invitation[]
+  apiKeys      ApiKey[]
+  abacPolicies AbacPolicy[]
+  auditLogs    AuditLog[]
+  versions     OrganizationVersion[]
+
+  @@index([status])
+  @@index([parentOrganizationId])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("organizations")
+}
+
+model OrganizationVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  version        Int
+  snapshot       Json
+  changedByUserId String? @map("changed_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, version])
+  @@index([organizationId, createdAt])
+  @@map("organization_versions")
+}
+
+model User {
+  id                String     @id @default(uuid()) @db.Uuid
+  email             String     @unique @db.VarChar(320)
+  firstName         String     @map("first_name") @db.VarChar(100)
+  lastName          String     @map("last_name") @db.VarChar(100)
+  displayName       String?    @map("display_name") @db.VarChar(200)
+  phone             String?    @db.VarChar(20)
+  locale            String     @default("en-US") @db.VarChar(16)
+  timezone          String     @default("UTC") @db.VarChar(64)
+  status            UserStatus @default(invited)
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  keycloakSubjectId String?    @unique @map("keycloak_subject_id") @db.VarChar(128)
+  lastLoginAt       DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  metadata          Json       @default("{}")
+  version           Int        @default(1)
+  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime?  @map("deleted_at") @db.Timestamptz(3)
+
+  memberships          Membership[]
+  invitationsSent      Invitation[]          @relation("InvitationInviter")
+  sessions             UserSession[]
+  auditLogs            AuditLog[]
+  versions             UserVersion[]
+  createdApiKeys       ApiKey[]              @relation("ApiKeyCreator")
+
+  @@index([status])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model UserVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  version         Int
+  snapshot        Json
+  changedByUserId String?  @map("changed_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+  @@index([userId, createdAt])
+  @@map("user_versions")
+}
+
+model Role {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  name           String   @db.VarChar(100)
+  slug           String   @db.VarChar(100)
+  description    String?  @db.VarChar(1000)
+  permissions    String[]
+  isSystem       Boolean  @default(false) @map("is_system")
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  organization     Organization?     @relation(fields: [organizationId], references: [id])
+  membershipRoles  MembershipRole[]
+  invitationRoles  InvitationRole[]
+  apiKeyRoles      ApiKeyRole[]
+
+  @@unique([organizationId, slug])
+  @@index([isSystem])
+  @@index([deletedAt])
+  @@map("roles")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  title          String?          @db.VarChar(200)
+  department     String?          @db.VarChar(200)
+  status         MembershipStatus @default(invited)
+  isPrimary      Boolean          @default(false) @map("is_primary")
+  version        Int              @default(1)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz(3)
+
+  user         User             @relation(fields: [userId], references: [id])
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  roles        MembershipRole[]
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
+  @@index([userId, status])
+  @@index([deletedAt])
+  @@map("memberships")
+}
+
+model MembershipRole {
+  membershipId String   @map("membership_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  assignedBy   String?  @map("assigned_by") @db.Uuid
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+model Invitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  email          String           @db.VarChar(320)
+  tokenHash      String           @unique @map("token_hash") @db.VarChar(128)
+  status         InvitationStatus @default(pending)
+  message        String?          @db.VarChar(1000)
+  invitedByUserId String          @map("invited_by_user_id") @db.Uuid
+  expiresAt      DateTime         @map("expires_at") @db.Timestamptz(3)
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(3)
+  revokedAt      DateTime?        @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  invitedBy    User             @relation("InvitationInviter", fields: [invitedByUserId], references: [id])
+  roles        InvitationRole[]
+
+  @@index([organizationId, status])
+  @@index([email, status])
+  @@index([expiresAt])
+  @@map("invitations")
+}
+
+model InvitationRole {
+  invitationId String @map("invitation_id") @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+
+  invitation Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([invitationId, roleId])
+  @@map("invitation_roles")
+}
+
+model ApiKey {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  name            String       @db.VarChar(100)
+  description     String?      @db.VarChar(500)
+  keyPrefix       String       @map("key_prefix") @db.VarChar(16)
+  keyHash         String       @unique @map("key_hash") @db.VarChar(128)
+  status          ApiKeyStatus @default(active)
+  scopes          String[]
+  lastUsedAt      DateTime?    @map("last_used_at") @db.Timestamptz(3)
+  expiresAt       DateTime?    @map("expires_at") @db.Timestamptz(3)
+  revokedAt       DateTime?    @map("revoked_at") @db.Timestamptz(3)
+  createdByUserId String       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User         @relation("ApiKeyCreator", fields: [createdByUserId], references: [id])
+  roles        ApiKeyRole[]
+
+  @@index([organizationId, status])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+model ApiKeyRole {
+  apiKeyId String @map("api_key_id") @db.Uuid
+  roleId   String @map("role_id") @db.Uuid
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([apiKeyId, roleId])
+  @@map("api_key_roles")
+}
+
+model UserSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  organizationId   String?   @map("organization_id") @db.Uuid
+  keycloakSessionId String?  @map("keycloak_session_id") @db.VarChar(128)
+  ipAddress        String?   @map("ip_address") @db.VarChar(64)
+  userAgent        String?   @map("user_agent") @db.VarChar(500)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+model AbacPolicy {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  name           String     @db.VarChar(100)
+  description    String?    @db.VarChar(1000)
+  effect         AbacEffect
+  resourceType   String     @map("resource_type") @db.VarChar(100)
+  actions        String[]
+  conditions     Json
+  priority       Int        @default(100)
+  enabled        Boolean    @default(true)
+  version        Int        @default(1)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name])
+  @@index([organizationId, resourceType, enabled])
+  @@index([priority])
+  @@map("abac_policies")
+}
+
+model AuditLog {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String?    @map("organization_id") @db.Uuid
+  actorUserId    String?    @map("actor_user_id") @db.Uuid
+  actorType      ActorType
+  action         AuditAction
+  resourceType   String     @map("resource_type") @db.VarChar(100)
+  resourceId     String?    @map("resource_id") @db.VarChar(64)
+  correlationId  String     @map("correlation_id") @db.Uuid
+  ipAddress      String?    @map("ip_address") @db.VarChar(64)
+  userAgent      String?    @map("user_agent") @db.VarChar(500)
+  changes        Json?
+  metadata       Json       @default("{}")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  actorUser    User?         @relation(fields: [actorUserId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([correlationId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+/// Transactional outbox for reliable Kafka publishing
+model OutboxMessage {
+  id            String       @id @default(uuid()) @db.Uuid
+  topic         String       @db.VarChar(200)
+  aggregateType String       @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String       @map("aggregate_id") @db.Uuid
+  eventType     String       @map("event_type") @db.VarChar(200)
+  payload       Json
+  headers       Json         @default("{}")
+  status        OutboxStatus @default(pending)
+  attempts      Int          @default(0)
+  lastError     String?      @map("last_error") @db.VarChar(2000)
+  availableAt   DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
+  publishedAt   DateTime?    @map("published_at") @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_messages")
+}
