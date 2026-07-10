@@ -1792,3 +1792,224 @@ model ComplianceCase {
   @@index([checkId])
   @@map("compliance_cases")
 }
+
+enum AiProvider {
+  heuristic
+  openai
+}
+
+enum AiMessageRole {
+  system
+  user
+  assistant
+  tool
+}
+
+enum AiAgentStatus {
+  draft
+  active
+  archived
+}
+
+enum AiRunStatus {
+  queued
+  running
+  completed
+  failed
+  cancelled
+}
+
+model AiAgent {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  name           String        @db.VarChar(200)
+  slug           String        @db.VarChar(120)
+  description    String?       @db.VarChar(2000)
+  systemPrompt   String        @map("system_prompt") @db.VarChar(8000)
+  provider       AiProvider    @default(heuristic)
+  model          String        @default("gain-heuristic-v1") @db.VarChar(100)
+  status         AiAgentStatus @default(draft)
+  tools          Json          @default("[]")
+  metadata       Json          @default("{}")
+  version        Int           @default(1)
+  createdByUserId String?      @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?     @map("deleted_at") @db.Timestamptz(3)
+
+  conversations AiConversation[]
+  runs          AiAgentRun[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("ai_agents")
+}
+
+model AiConversation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  agentId        String?  @map("agent_id") @db.Uuid
+  title          String   @default("New conversation") @db.VarChar(200)
+  metadata       Json     @default("{}")
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  agent    AiAgent?    @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  messages AiMessage[]
+
+  @@index([organizationId, updatedAt])
+  @@index([agentId])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  conversationId String        @map("conversation_id") @db.Uuid
+  role           AiMessageRole
+  content        String        @db.Text
+  provider       AiProvider?
+  model          String?       @db.VarChar(100)
+  tokenEstimate  Int?          @map("token_estimate")
+  metadata       Json          @default("{}")
+  createdByUserId String?      @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("ai_messages")
+}
+
+model AiAgentRun {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  agentId        String      @map("agent_id") @db.Uuid
+  status         AiRunStatus @default(queued)
+  provider       AiProvider
+  model          String      @db.VarChar(100)
+  input          Json        @default("{}")
+  prompt         String?     @db.VarChar(8000)
+  output         Json?
+  errorMessage   String?     @map("error_message") @db.VarChar(2000)
+  startedAt      DateTime?   @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?   @map("completed_at") @db.Timestamptz(3)
+  createdByUserId String?    @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  agent AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt])
+  @@index([agentId, createdAt])
+  @@map("ai_agent_runs")
+}
+
+enum AiMarketplaceListingStatus {
+  draft
+  published
+  unpublished
+  archived
+}
+
+enum AiMarketplacePricingModel {
+  free
+  per_run
+  monthly
+}
+
+enum AiMarketplaceCategory {
+  diligence
+  valuation
+  compliance
+  portfolio
+  trust
+  general
+}
+
+enum AiMarketplaceInstallStatus {
+  active
+  suspended
+  cancelled
+}
+
+model AiMarketplaceListing {
+  id              String                     @id @default(uuid()) @db.Uuid
+  organizationId  String                     @map("organization_id") @db.Uuid
+  sourceAgentId   String?                    @map("source_agent_id") @db.Uuid
+  name            String                     @db.VarChar(200)
+  slug            String                     @db.VarChar(120)
+  summary         String                     @db.VarChar(500)
+  description     String?                    @db.VarChar(4000)
+  category        AiMarketplaceCategory      @default(general)
+  status          AiMarketplaceListingStatus @default(draft)
+  pricingModel    AiMarketplacePricingModel  @map("pricing_model") @default(free)
+  priceMinor      BigInt                     @map("price_minor") @default(0)
+  currencyCode    String                     @map("currency_code") @db.VarChar(3) @default("USD")
+  includedRuns    Int                        @map("included_runs") @default(0)
+  systemPrompt    String                     @map("system_prompt") @db.VarChar(8000)
+  provider        AiProvider                 @default(heuristic)
+  model           String                     @default("gain-heuristic-v1") @db.VarChar(100)
+  tools           Json                       @default("[]")
+  metadata        Json                       @default("{}")
+  version         Int                        @default(1)
+  publishedAt     DateTime?                  @map("published_at") @db.Timestamptz(3)
+  createdByUserId String?                    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?                  @map("deleted_at") @db.Timestamptz(3)
+
+  installs AiMarketplaceInstall[]
+
+  @@unique([organizationId, slug])
+  @@index([status, category, updatedAt])
+  @@index([organizationId, status])
+  @@map("ai_marketplace_listings")
+}
+
+model AiMarketplaceInstall {
+  id              String                     @id @default(uuid()) @db.Uuid
+  organizationId  String                     @map("organization_id") @db.Uuid
+  listingId       String                     @map("listing_id") @db.Uuid
+  agentId         String                     @map("agent_id") @db.Uuid
+  status          AiMarketplaceInstallStatus @default(active)
+  pricingModel    AiMarketplacePricingModel  @map("pricing_model")
+  priceMinor      BigInt                     @map("price_minor")
+  currencyCode    String                     @map("currency_code") @db.VarChar(3)
+  includedRuns    Int                        @map("included_runs")
+  periodStart     DateTime                   @map("period_start") @db.Timestamptz(3)
+  periodEnd       DateTime?                  @map("period_end") @db.Timestamptz(3)
+  metadata        Json                       @default("{}")
+  createdByUserId String?                    @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  listing AiMarketplaceListing     @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  usage   AiMarketplaceUsageEvent[]
+
+  @@unique([organizationId, listingId])
+  @@index([organizationId, status, createdAt])
+  @@index([listingId])
+  @@index([agentId])
+  @@map("ai_marketplace_installs")
+}
+
+model AiMarketplaceUsageEvent {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  installId       String   @map("install_id") @db.Uuid
+  units           Int      @default(1)
+  referenceType   String?  @map("reference_type") @db.VarChar(64)
+  referenceId     String?  @map("reference_id") @db.Uuid
+  metadata        Json     @default("{}")
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  install AiMarketplaceInstall @relation(fields: [installId], references: [id], onDelete: Cascade)
+
+  @@index([installId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("ai_marketplace_usage_events")
+}

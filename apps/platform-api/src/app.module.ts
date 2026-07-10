@@ -27,6 +27,8 @@ import { TokenizationModule } from './tokenization/tokenization.module';
 import { TrustModule } from './trust/trust.module';
 import { ValuationModule } from './valuation/valuation.module';
 import { WorkflowModule } from './workflow/workflow.module';
+import { AiModule } from './ai/ai.module';
+import { AiMarketplaceModule } from './ai-marketplace/ai-marketplace.module';
 
 @Global()
 @Module({
@@ -63,7 +65,7 @@ class PlatformCoreModule {}
       limit: Number(process.env.RATE_LIMIT_LIMIT ?? 120),
     }]),
     ScheduleModule.forRoot(), TerminusModule, PlatformCoreModule,
-    DocumentModule, AssetModule, WorkflowModule, NotificationModule, GraphModule, ProvenanceModule, TrustModule, ValuationModule, TokenizationModule, MarketplaceModule, PortfolioModule, CrmModule, ComplianceModule,
+    DocumentModule, AssetModule, WorkflowModule, NotificationModule, GraphModule, ProvenanceModule, TrustModule, ValuationModule, TokenizationModule, MarketplaceModule, PortfolioModule, CrmModule, ComplianceModule, AiModule, AiMarketplaceModule,
   ],
 })
 export class AppModule {}

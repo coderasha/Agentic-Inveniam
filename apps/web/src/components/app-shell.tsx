@@ -26,6 +26,8 @@ import {
   Briefcase,
   Contact,
   Scale,
+  Bot,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -57,6 +59,8 @@ const nav = [
       { href: '/portfolios', label: 'Portfolios', icon: Briefcase },
       { href: '/crm', label: 'Investor CRM', icon: Contact },
       { href: '/compliance', label: 'Compliance', icon: Scale },
+      { href: '/ai', label: 'AI Chat & Agents', icon: Bot },
+      { href: '/ai-marketplace', label: 'AI Marketplace', icon: ShoppingBag },
       { href: '/valuations', label: 'Valuations', icon: Calculator },
       { href: '/tokenization', label: 'Tokenization', icon: Coins },
       { href: '/marketplace', label: 'Marketplace', icon: Store },

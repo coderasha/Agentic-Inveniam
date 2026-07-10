@@ -377,4 +377,95 @@ export const platformApi = {
       '/compliance/cases?page=1&pageSize=50',
       { organizationId },
     ),
+  listAiAgents: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/ai/agents?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createAiAgent: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/ai/agents', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  updateAiAgent: (organizationId: string, id: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>(`/ai/agents/${id}`, {
+      method: 'PATCH',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  runAiAgent: (organizationId: string, id: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>(`/ai/agents/${id}/runs`, {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAiConversations: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/ai/conversations?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createAiConversation: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/ai/conversations', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  getAiConversation: (organizationId: string, id: string) =>
+    platformFetch<Record<string, unknown>>(`/ai/conversations/${id}`, {
+      organizationId,
+    }),
+  createAiMessage: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<{
+      userMessage: Record<string, unknown>;
+      assistantMessage: Record<string, unknown>;
+      conversationId: string;
+    }>('/ai/messages', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAiRuns: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/ai/runs?page=1&pageSize=50',
+      { organizationId },
+    ),
+  listAiMarketplaceListings: (organizationId: string, catalog = false) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      `/ai-marketplace/listings?page=1&pageSize=50${catalog ? '&catalog=true' : ''}`,
+      { organizationId },
+    ),
+  createAiMarketplaceListing: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/ai-marketplace/listings', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  publishAiMarketplaceListing: (organizationId: string, id: string) =>
+    platformFetch<Record<string, unknown>>(`/ai-marketplace/listings/${id}/publish`, {
+      method: 'POST',
+      organizationId,
+    }),
+  installAiMarketplaceListing: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/ai-marketplace/installs', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAiMarketplaceInstalls: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/ai-marketplace/installs?page=1&pageSize=50',
+      { organizationId },
+    ),
+  recordAiMarketplaceUsage: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/ai-marketplace/usage', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAiMarketplaceUsage: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/ai-marketplace/usage?page=1&pageSize=50',
+      { organizationId },
+    ),
 };
