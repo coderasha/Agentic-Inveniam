@@ -98,7 +98,7 @@ export class SignalsController {
   constructor(private readonly service: SignalService, private readonly authz: AuthorizationService) {}
   @Post()
   ingest(@Param('twinId') twinId: string, @Body() body: SignalBody, @CurrentPrincipal() p: AuthenticatedPrincipal) {
-    this.authz.require(p, 'twin:signal:write');
+    this.authz.require(p, 'twin:signal:ingest');
     return this.service.ingest(twinId, { ...body, observedAt: new Date(body.observedAt) }, p);
   }
   @Get()

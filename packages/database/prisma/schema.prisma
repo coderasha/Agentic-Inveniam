@@ -588,3 +588,296 @@ model TwinInsight {
   @@index([twinId, kind, generatedAt])
   @@map("twin_insights")
 }
+
+// ─── Document Management ─────────────────────────────────────────────────────
+
+enum DocumentStatus {
+  draft
+  uploaded
+  processing
+  ready
+  quarantined
+  archived
+}
+
+enum DocumentScanStatus {
+  pending
+  clean
+  infected
+  skipped
+}
+
+enum DocumentSensitivity {
+  public
+  internal
+  confidential
+  restricted
+}
+
+enum DocumentLinkTargetType {
+  organization
+  twin
+  asset
+  user
+  workflow
+}
+
+model Document {
+  id              String               @id @default(uuid()) @db.Uuid
+  organizationId  String               @map("organization_id") @db.Uuid
+  title           String               @db.VarChar(300)
+  description     String?              @db.VarChar(4000)
+  category        String               @default("general") @db.VarChar(100)
+  sensitivity     DocumentSensitivity  @default(internal)
+  status          DocumentStatus       @default(draft)
+  scanStatus      DocumentScanStatus   @default(pending) @map("scan_status")
+  tags            String[]             @default([])
+  mimeType        String               @map("mime_type") @db.VarChar(200)
+  fileName        String               @map("file_name") @db.VarChar(500)
+  byteSize        BigInt               @map("byte_size")
+  checksumSha256  String               @map("checksum_sha256") @db.Char(64)
+  storageKey      String               @map("storage_key") @db.VarChar(1000)
+  currentVersion  Int                  @default(1) @map("current_version")
+  metadata        Json                 @default("{}")
+  version         Int                  @default(1)
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?            @map("deleted_at") @db.Timestamptz(3)
+
+  versions DocumentVersion[]
+  links    DocumentLink[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, category])
+  @@index([checksumSha256])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  documentId      String   @map("document_id") @db.Uuid
+  versionNumber   Int      @map("version_number")
+  fileName        String   @map("file_name") @db.VarChar(500)
+  mimeType        String   @map("mime_type") @db.VarChar(200)
+  byteSize        BigInt   @map("byte_size")
+  checksumSha256  String   @map("checksum_sha256") @db.Char(64)
+  storageKey      String   @map("storage_key") @db.VarChar(1000)
+  changeSummary   String?  @map("change_summary") @db.VarChar(1000)
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId, createdAt])
+  @@map("document_versions")
+}
+
+model DocumentLink {
+  id             String                 @id @default(uuid()) @db.Uuid
+  documentId     String                 @map("document_id") @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  targetType     DocumentLinkTargetType @map("target_type")
+  targetId       String                 @map("target_id") @db.Uuid
+  relationship   String                 @default("attached_to") @db.VarChar(100)
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  deletedAt      DateTime?              @map("deleted_at") @db.Timestamptz(3)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, targetType, targetId, relationship])
+  @@index([organizationId, targetType, targetId])
+  @@map("document_links")
+}
+
+// ─── Asset Registry ──────────────────────────────────────────────────────────
+
+enum AssetStatus {
+  draft
+  active
+  under_review
+  disposed
+  archived
+}
+
+enum AssetClass {
+  real_estate
+  private_equity
+  private_credit
+  infrastructure
+  fund
+  collectible
+  operating_company
+  other
+}
+
+model RegisteredAsset {
+  id                String      @id @default(uuid()) @db.Uuid
+  organizationId    String      @map("organization_id") @db.Uuid
+  name              String      @db.VarChar(300)
+  slug              String      @db.VarChar(120)
+  description       String?     @db.VarChar(4000)
+  assetClass        AssetClass  @map("asset_class")
+  status            AssetStatus @default(draft)
+  twinId            String?     @unique @map("twin_id") @db.Uuid
+  externalReference String?     @map("external_reference") @db.VarChar(200)
+  currencyCode      String      @default("USD") @map("currency_code") @db.Char(3)
+  acquisitionDate   DateTime?   @map("acquisition_date") @db.Date
+  tags              String[]    @default([])
+  metadata          Json        @default("{}")
+  version           Int         @default(1)
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt         DateTime?   @map("deleted_at") @db.Timestamptz(3)
+
+  valuations AssetValuation[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@index([organizationId, assetClass])
+  @@index([deletedAt])
+  @@map("registered_assets")
+}
+
+model AssetValuation {
+  id             String   @id @default(uuid()) @db.Uuid
+  assetId        String   @map("asset_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  asOfDate       DateTime @map("as_of_date") @db.Date
+  currencyCode   String   @map("currency_code") @db.Char(3)
+  amountMinor    BigInt   @map("amount_minor")
+  methodology    String   @db.VarChar(100)
+  confidence     Float?
+  source         String?  @db.VarChar(100)
+  notes          String?  @db.VarChar(2000)
+  createdByUserId String? @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  asset RegisteredAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, asOfDate])
+  @@index([organizationId, asOfDate])
+  @@map("asset_valuations")
+}
+
+// ─── Workflow Engine ─────────────────────────────────────────────────────────
+
+enum WorkflowStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum WorkflowRunStatus {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum WorkflowTaskStatus {
+  pending
+  in_progress
+  completed
+  skipped
+  failed
+}
+
+model WorkflowDefinition {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(200)
+  slug           String         @db.VarChar(120)
+  description    String?        @db.VarChar(2000)
+  status         WorkflowStatus @default(draft)
+  definition     Json
+  version        Int            @default(1)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz(3)
+
+  runs WorkflowRun[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("workflow_definitions")
+}
+
+model WorkflowRun {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  workflowId     String            @map("workflow_id") @db.Uuid
+  status         WorkflowRunStatus @default(pending)
+  context        Json              @default("{}")
+  startedAt      DateTime?         @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?         @map("completed_at") @db.Timestamptz(3)
+  createdByUserId String?          @map("created_by_user_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  workflow WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  tasks    WorkflowTask[]
+
+  @@index([organizationId, status])
+  @@index([workflowId, createdAt])
+  @@map("workflow_runs")
+}
+
+model WorkflowTask {
+  id          String             @id @default(uuid()) @db.Uuid
+  runId       String             @map("run_id") @db.Uuid
+  key         String             @db.VarChar(100)
+  name        String             @db.VarChar(200)
+  status      WorkflowTaskStatus @default(pending)
+  assigneeUserId String?         @map("assignee_user_id") @db.Uuid
+  input       Json               @default("{}")
+  output      Json?
+  dueAt       DateTime?          @map("due_at") @db.Timestamptz(3)
+  completedAt DateTime?          @map("completed_at") @db.Timestamptz(3)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  run WorkflowRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, key])
+  @@index([runId, status])
+  @@map("workflow_tasks")
+}
+
+// ─── Notification Center ─────────────────────────────────────────────────────
+
+enum NotificationChannel {
+  in_app
+  email
+  webhook
+}
+
+enum NotificationStatus {
+  pending
+  sent
+  failed
+  read
+}
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String?             @map("organization_id") @db.Uuid
+  userId         String              @map("user_id") @db.Uuid
+  channel        NotificationChannel @default(in_app)
+  status         NotificationStatus  @default(pending)
+  title          String              @db.VarChar(300)
+  body           String              @db.VarChar(4000)
+  payload        Json                @default("{}")
+  readAt         DateTime?           @map("read_at") @db.Timestamptz(3)
+  sentAt         DateTime?           @map("sent_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId, status, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("notifications")
+}

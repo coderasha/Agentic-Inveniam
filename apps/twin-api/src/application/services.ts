@@ -4,11 +4,12 @@ import type { DomainEvent } from '@gain/shared';
 import type { AuthenticatedPrincipal } from '../domain/twin/auth.types';
 import { ForbiddenError, NotFoundError, ValidationError } from '../domain/twin/errors';
 import type {
-  AttributeRepository, CachePort, CreateTwinInput, InsightRepository, ListQuery,
+  AttributeRepository, CachePort, CreateTwinInput, InsightRepository,
   OutboxRepository, RelationshipRepository, SignalRepository, TwinRepository,
   UpdateTwinInput, UpsertAttributeInput,
 } from '../domain/twin/ports';
 import type { DigitalTwin, TwinInsight } from '../domain/twin/models';
+import type { ListQuery } from '../domain/twin/models';
 import {
   ATTRIBUTE_REPOSITORY, CACHE_PORT, INSIGHT_REPOSITORY, OUTBOX_REPOSITORY,
   RELATIONSHIP_REPOSITORY, SIGNAL_REPOSITORY, TWIN_REPOSITORY,

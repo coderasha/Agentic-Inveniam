@@ -37,6 +37,14 @@ export const PERMISSIONS = [
   'twin:insight:read',
   'twin:insight:generate',
   'twin:audit:read',
+  'document:create',
+  'document:read',
+  'document:update',
+  'document:delete',
+  'document:download',
+  'document:version:manage',
+  'document:link:manage',
+  'document:audit:read',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -91,6 +99,14 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> 
     'twin:insight:read',
     'twin:insight:generate',
     'twin:audit:read',
+    'document:create',
+    'document:read',
+    'document:update',
+    'document:delete',
+    'document:download',
+    'document:version:manage',
+    'document:link:manage',
+    'document:audit:read',
   ],
   org_admin: [
     'identity:organization:read',
@@ -124,6 +140,14 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> 
     'twin:insight:read',
     'twin:insight:generate',
     'twin:audit:read',
+    'document:create',
+    'document:read',
+    'document:update',
+    'document:delete',
+    'document:download',
+    'document:version:manage',
+    'document:link:manage',
+    'document:audit:read',
   ],
   org_member: [
     'identity:organization:read',
@@ -133,6 +157,9 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> 
     'twin:read',
     'twin:signal:ingest',
     'twin:insight:read',
+    'document:create',
+    'document:read',
+    'document:download',
   ],
   org_viewer: [
     'identity:organization:read',
@@ -141,6 +168,8 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> 
     'identity:permission:read',
     'twin:read',
     'twin:insight:read',
+    'document:read',
+    'document:download',
   ],
   service_account: [
     'identity:organization:read',
@@ -151,6 +180,9 @@ export const SYSTEM_ROLE_PERMISSIONS: Record<SystemRole, readonly Permission[]> 
     'twin:read',
     'twin:signal:ingest',
     'twin:insight:read',
+    'document:read',
+    'document:create',
+    'document:download',
   ],
 };
 

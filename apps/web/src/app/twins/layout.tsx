@@ -1,6 +1,6 @@
 import { AppShell } from '@/components/app-shell';
 
-export default function IdentityLayout({
+export default function TwinsLayout({
   children,
 }: {
   children: React.ReactNode;

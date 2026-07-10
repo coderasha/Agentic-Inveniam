@@ -47,4 +47,6 @@ jobs:
           DATABASE_URL: postgresql://gain:gain_secret_change_me@localhost:5432/gain_identity?schema=public
       - run: pnpm --filter @gain/identity-api test
       - run: pnpm --filter @gain/identity-api typecheck
+      - run: pnpm --filter @gain/twin-api test
+      - run: pnpm --filter @gain/twin-api typecheck
       - run: pnpm --filter @gain/web typecheck

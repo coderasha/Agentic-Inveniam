@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createOrganizationSchema, type CreateOrganizationInput } from '@gain/shared';
+import { z } from 'zod';
+import { createOrganizationSchema } from '@gain/shared';
 import { identityApi } from '@/lib/identity-api';
 import { useIdentityStore } from '@/stores/identity-store';
 import {
@@ -17,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
+type CreateOrganizationForm = z.input<typeof createOrganizationSchema>;
+
 export default function OrganizationsPage() {
   const setOrganizationId = useIdentityStore((s) => s.setOrganizationId);
   const organizationId = useIdentityStore((s) => s.organizationId);
@@ -28,7 +31,7 @@ export default function OrganizationsPage() {
     queryFn: () => identityApi.listOrganizations('?page=1&pageSize=50'),
   });
 
-  const form = useForm<CreateOrganizationInput>({
+  const form = useForm<CreateOrganizationForm>({
     resolver: zodResolver(createOrganizationSchema),
     defaultValues: {
       name: '',
@@ -39,8 +42,8 @@ export default function OrganizationsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (body: CreateOrganizationInput) =>
-      identityApi.createOrganization(body),
+    mutationFn: (body: CreateOrganizationForm) =>
+      identityApi.createOrganization(createOrganizationSchema.parse(body)),
     onSuccess: async (org) => {
       setOrganizationId(org.id);
       setShowCreate(false);

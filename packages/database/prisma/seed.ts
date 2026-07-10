@@ -156,14 +156,24 @@ async function seedDemoTenant() {
       },
     });
   }
-  await prisma.organizationVersion.create({
-    data: {
-      organizationId: org.id,
-      version: org.version,
-      snapshot: org,
-      changedByUserId: admin.id,
+  const existingVersion = await prisma.organizationVersion.findUnique({
+    where: {
+      organizationId_version: {
+        organizationId: org.id,
+        version: org.version,
+      },
     },
   });
+  if (!existingVersion) {
+    await prisma.organizationVersion.create({
+      data: {
+        organizationId: org.id,
+        version: org.version,
+        snapshot: org,
+        changedByUserId: admin.id,
+      },
+    });
+  }
 }
 
 async function main() {
