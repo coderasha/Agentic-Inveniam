@@ -1,0 +1,39 @@
+replicaCount: 2
+
+image:
+  repository: gain/identity-api
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3001
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env:
+  NODE_ENV: production
+  IDENTITY_API_PORT: "3001"
+  LOG_LEVEL: info
+
+livenessProbe:
+  path: /api/health/live
+  initialDelaySeconds: 20
+  periodSeconds: 15
+
+readinessProbe:
+  path: /api/health/ready
+  initialDelaySeconds: 25
+  periodSeconds: 10
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70

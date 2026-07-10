@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gain
+          POSTGRES_PASSWORD: gain_secret_change_me
+          POSTGRES_DB: gain_identity
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gain -d gain_identity"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @gain/shared build
+      - run: pnpm --filter @gain/shared test
+      - name: Generate Prisma client
+        run: pnpm --filter @gain/database generate
+        env:
+          DATABASE_URL: postgresql://gain:gain_secret_change_me@localhost:5432/gain_identity?schema=public
+      - run: pnpm --filter @gain/database build
+        env:
+          DATABASE_URL: postgresql://gain:gain_secret_change_me@localhost:5432/gain_identity?schema=public
+      - run: pnpm --filter @gain/identity-api test
+      - run: pnpm --filter @gain/identity-api typecheck
+      - run: pnpm --filter @gain/web typecheck
