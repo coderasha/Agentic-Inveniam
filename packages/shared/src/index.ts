@@ -13,3 +13,4 @@ export * from './crm/index.js';
 export * from './compliance/index.js';
 export * from './ai/index.js';
 export * from './ai-marketplace/index.js';
+export * from './analytics/index.js';

@@ -468,4 +468,50 @@ export const platformApi = {
       '/ai-marketplace/usage?page=1&pageSize=50',
       { organizationId },
     ),
+  analyticsOverview: (organizationId: string) =>
+    platformFetch<{
+      metrics: Record<string, number>;
+      derived: Record<string, number | null>;
+      capturedAt: string;
+    }>('/analytics/overview', { organizationId }),
+  analyticsSeries: (
+    organizationId: string,
+    metric: string,
+    from: string,
+    to: string,
+  ) =>
+    platformFetch<{
+      metric: string;
+      points: Array<{ day: string; count: number }>;
+    }>(
+      `/analytics/series?metric=${encodeURIComponent(metric)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      { organizationId },
+    ),
+  createAnalyticsSnapshot: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/analytics/snapshots', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAnalyticsSnapshots: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/analytics/snapshots?page=1&pageSize=50',
+      { organizationId },
+    ),
+  createAnalyticsReport: (organizationId: string, body: Record<string, unknown>) =>
+    platformFetch<Record<string, unknown>>('/analytics/reports', {
+      method: 'POST',
+      organizationId,
+      body: JSON.stringify(body),
+    }),
+  listAnalyticsReports: (organizationId: string) =>
+    platformFetch<{ items: Array<Record<string, unknown>>; total: number }>(
+      '/analytics/reports?page=1&pageSize=50',
+      { organizationId },
+    ),
+  runAnalyticsReport: (organizationId: string, id: string) =>
+    platformFetch<Record<string, unknown>>(`/analytics/reports/${id}/run`, {
+      method: 'POST',
+      organizationId,
+    }),
 };

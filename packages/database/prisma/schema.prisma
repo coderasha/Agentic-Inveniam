@@ -2013,3 +2013,43 @@ model AiMarketplaceUsageEvent {
   @@index([organizationId, createdAt])
   @@map("ai_marketplace_usage_events")
 }
+
+enum AnalyticsReportStatus {
+  active
+  archived
+}
+
+model AnalyticsSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  label           String   @db.VarChar(200)
+  notes           String?  @db.VarChar(2000)
+  capturedAt      DateTime @map("captured_at") @db.Timestamptz(3)
+  metrics         Json
+  derived         Json     @default("{}")
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([organizationId, capturedAt])
+  @@map("analytics_snapshots")
+}
+
+model AnalyticsReport {
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  name            String                 @db.VarChar(200)
+  slug            String                 @db.VarChar(120)
+  description     String?                @db.VarChar(2000)
+  status          AnalyticsReportStatus  @default(active)
+  metrics         Json
+  filters         Json                   @default("{}")
+  version         Int                    @default(1)
+  createdByUserId String?                @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?              @map("deleted_at") @db.Timestamptz(3)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("analytics_reports")
+}

@@ -28,6 +28,7 @@ import {
   Scale,
   Bot,
   ShoppingBag,
+  ChartColumn,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,7 @@ const nav = [
       { href: '/compliance', label: 'Compliance', icon: Scale },
       { href: '/ai', label: 'AI Chat & Agents', icon: Bot },
       { href: '/ai-marketplace', label: 'AI Marketplace', icon: ShoppingBag },
+      { href: '/analytics', label: 'Analytics', icon: ChartColumn },
       { href: '/valuations', label: 'Valuations', icon: Calculator },
       { href: '/tokenization', label: 'Tokenization', icon: Coins },
       { href: '/marketplace', label: 'Marketplace', icon: Store },
